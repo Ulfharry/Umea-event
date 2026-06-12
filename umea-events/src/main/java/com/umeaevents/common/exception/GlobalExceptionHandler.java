@@ -34,6 +34,12 @@ public class GlobalExceptionHandler {
         return build(HttpStatus.BAD_REQUEST, "Validering misslyckades", request, fieldErrors);
     }
 
+    @ExceptionHandler(IllegalArgumentException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalArgument(
+            IllegalArgumentException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
+    }
+
     /** Sista skyddsnätet — oväntade fel ska aldrig läcka interna detaljer. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleGeneric(
