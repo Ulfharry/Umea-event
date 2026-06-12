@@ -1,0 +1,22 @@
+services:
+  postgres:
+    image: postgres:16
+    container_name: umea-events-db
+    environment:
+      POSTGRES_DB: umea_events
+      POSTGRES_USER: umea
+      POSTGRES_PASSWORD: umea
+    ports:
+      - "5432:5432"
+    volumes:
+      - umea-pg-data:/var/lib/postgresql/data
+    healthcheck:
+      # Gör att 'depends_on: condition: service_healthy' funkar och att du
+      # ser i 'docker ps' när databasen faktiskt tar emot anslutningar.
+      test: ["CMD-SHELL", "pg_isready -U umea -d umea_events"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  umea-pg-data:
