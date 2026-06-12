@@ -1,0 +1,77 @@
+package com.umeaevents.event;
+
+import com.umeaevents.event.dto.CreateEventRequest;
+import com.umeaevents.event.dto.EventOccurrenceResponse;
+import com.umeaevents.event.dto.EventResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.UUID;
+
+@RestController
+@RequestMapping("/api/v1/events")
+@RequiredArgsConstructor
+@Tag(name = "Events", description = "Evenemang och föreställningar")
+public class EventController {
+
+    private final EventService eventService;
+
+    @GetMapping
+    @Operation(summary = "Lista publicerade events (occurrence-vy, paginerat)")
+    public Page<EventOccurrenceResponse> list(Pageable pageable) {
+        return eventService.listPublished(pageable);
+    }
+
+    @GetMapping("/{id}")
+    @Operation(summary = "Hämta en specifik occurrence")
+    public EventOccurrenceResponse getById(@PathVariable UUID id) {
+        return eventService.getOccurrenceById(id);
+    }
+
+    @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('RESTAURANT', 'ADMIN')")
+    @Operation(summary = "Skapa event (skapas som DRAFT)", security = @SecurityRequirement(name = "bearerAuth"))
+    public EventResponse create(
+            @Valid @RequestBody CreateEventRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        return eventService.create(request, user.getUsername());
+    }
+
+    @PostMapping("/{id}/submit")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Skicka in event för granskning (DRAFT → PENDING_REVIEW)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public EventResponse submit(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails user) {
+        return eventService.submit(id, user.getUsername());
+    }
+
+    @PostMapping("/{id}/publish")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Publicera event (PENDING_REVIEW → PUBLISHED)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public EventResponse publish(@PathVariable UUID id) {
+        return eventService.publish(id);
+    }
+
+    @PostMapping("/{id}/cancel")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Avboka event", security = @SecurityRequirement(name = "bearerAuth"))
+    public EventResponse cancel(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails user) {
+        return eventService.cancel(id, user.getUsername());
+    }
+}
