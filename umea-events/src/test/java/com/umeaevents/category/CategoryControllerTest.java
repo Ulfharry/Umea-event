@@ -1,11 +1,15 @@
 package com.umeaevents.category;
 
 import com.umeaevents.category.dto.CategoryResponse;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.setup.MockMvcBuilders;
+import org.springframework.web.context.WebApplicationContext;
 
 import java.util.List;
 import java.util.UUID;
@@ -15,19 +19,21 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-/**
- * @WebMvcTest startar bara webblagret (ingen databas, ingen full kontext) och
- * mockar service:n. Snabbt och isolerat — verifierar routing, statuskod och
- * JSON-form för GET /api/v1/categories.
- */
-@WebMvcTest(CategoryController.class)
+@SpringBootTest(webEnvironment = WebEnvironment.MOCK)
 class CategoryControllerTest {
 
     @Autowired
-    private MockMvc mockMvc;
+    private WebApplicationContext context;
 
     @MockitoBean
     private CategoryService categoryService;
+
+    private MockMvc mockMvc;
+
+    @BeforeEach
+    void setUp() {
+        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+    }
 
     @Test
     void getAll_returnsCategories() throws Exception {
