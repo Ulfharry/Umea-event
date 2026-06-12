@@ -43,6 +43,7 @@ public class Category {
     @Column(columnDefinition = "text")
     private String description;
 
+    @Builder.Default
     @Column(nullable = false)
     private boolean active = true;
 }
