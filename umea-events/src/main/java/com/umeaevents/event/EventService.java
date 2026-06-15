@@ -12,11 +12,13 @@ import com.umeaevents.venue.Venue;
 import com.umeaevents.venue.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Service
@@ -30,10 +32,19 @@ public class EventService {
     private final UserRepository userRepository;
     private final EventMapper eventMapper;
 
-    public Page<EventOccurrenceResponse> listPublished(Pageable pageable) {
-        return occurrenceRepository
-                .findAllByEventStatus(EventStatus.PUBLISHED, pageable)
-                .map(eventMapper::toOccurrenceResponse);
+    public Page<EventOccurrenceResponse> search(
+            String q, UUID categoryId, UUID venueId,
+            OffsetDateTime from, OffsetDateTime to, Pageable pageable) {
+        // Strip sort from pageable — the native query has its own ORDER BY starts_at ASC
+        Pageable unsorted = PageRequest.of(pageable.getPageNumber(), pageable.getPageSize());
+        return occurrenceRepository.search(
+                q,
+                categoryId != null ? categoryId.toString() : null,
+                venueId    != null ? venueId.toString()    : null,
+                from       != null ? from.toString()       : null,
+                to         != null ? to.toString()         : null,
+                unsorted
+        ).map(eventMapper::toOccurrenceResponse);
     }
 
     public EventOccurrenceResponse getOccurrenceById(UUID occurrenceId) {

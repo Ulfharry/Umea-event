@@ -40,4 +40,21 @@ public class EventMapper {
                 occurrence.getCreatedAt()
         );
     }
+
+    public EventOccurrenceResponse toOccurrenceResponse(EventOccurrenceRow row) {
+        return new EventOccurrenceResponse(
+                row.getId(),
+                row.getEvent_id(),
+                row.getTitle(),
+                row.getDescription(),
+                row.getVenue_id(),
+                row.getVenue_name(),
+                row.getCategory_id(),
+                row.getCategory_name(),
+                EventStatus.valueOf(row.getStatus()),
+                row.getStarts_at(),
+                row.getEnds_at(),
+                row.getCreated_at()
+        );
+    }
 }

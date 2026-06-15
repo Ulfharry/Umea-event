@@ -10,12 +10,15 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @RestController
@@ -27,9 +30,17 @@ public class EventController {
     private final EventService eventService;
 
     @GetMapping
-    @Operation(summary = "Lista publicerade events (occurrence-vy, paginerat)")
-    public Page<EventOccurrenceResponse> list(Pageable pageable) {
-        return eventService.listPublished(pageable);
+    @Operation(summary = "Sök publicerade events (occurrence-vy, paginerat)")
+    public Page<EventOccurrenceResponse> list(
+            @RequestParam(required = false) String q,
+            @RequestParam(required = false) UUID categoryId,
+            @RequestParam(required = false) UUID venueId,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime from,
+            @RequestParam(required = false)
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) OffsetDateTime to,
+            Pageable pageable) {
+        return eventService.search(q, categoryId, venueId, from, to, pageable);
     }
 
     @GetMapping("/{id}")

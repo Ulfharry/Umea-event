@@ -78,11 +78,31 @@ class EventControllerTest {
     @Test
     void list_noAuth_returns200() throws Exception {
         var page = new PageImpl<>(List.of(sampleOccurrence()), PageRequest.of(0, 20), 1);
-        when(eventService.listPublished(any())).thenReturn(page);
+        when(eventService.search(any(), any(), any(), any(), any(), any())).thenReturn(page);
 
         mockMvc.perform(get("/api/v1/events"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.content[0].title").value("Pubquiz på Bishops"));
+    }
+
+    @Test
+    void list_withQueryParam_returns200() throws Exception {
+        var page = new PageImpl<>(List.of(sampleOccurrence()), PageRequest.of(0, 20), 1);
+        when(eventService.search(any(), any(), any(), any(), any(), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/events").param("q", "pubquiz"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].title").value("Pubquiz på Bishops"));
+    }
+
+    @Test
+    void list_withCategoryFilter_returns200() throws Exception {
+        var page = new PageImpl<>(List.of(sampleOccurrence()), PageRequest.of(0, 20), 1);
+        when(eventService.search(any(), any(), any(), any(), any(), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/events")
+                        .param("categoryId", UUID.randomUUID().toString()))
+                .andExpect(status().isOk());
     }
 
     @Test
