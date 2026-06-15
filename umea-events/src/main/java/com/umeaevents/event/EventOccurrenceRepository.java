@@ -6,6 +6,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+import java.time.LocalDate;
 import java.util.UUID;
 
 public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence, UUID> {
@@ -58,4 +59,6 @@ public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence
             @Param("to")         String to,
             Pageable pageable
     );
+
+    boolean existsByEventAndRecurrenceDate(Event event, LocalDate recurrenceDate);
 }

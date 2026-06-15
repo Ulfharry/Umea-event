@@ -4,6 +4,7 @@ import com.umeaevents.category.Category;
 import com.umeaevents.category.CategoryRepository;
 import com.umeaevents.common.exception.ResourceNotFoundException;
 import com.umeaevents.event.dto.CreateEventRequest;
+import com.umeaevents.event.dto.CreateRecurringEventRequest;
 import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
 import com.umeaevents.user.User;
@@ -19,6 +20,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.UUID;
 
 @Service
@@ -27,6 +29,7 @@ public class EventService {
 
     private final EventRepository eventRepository;
     private final EventOccurrenceRepository occurrenceRepository;
+    private final RecurrenceRuleRepository recurrenceRuleRepository;
     private final VenueRepository venueRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
@@ -79,6 +82,39 @@ public class EventService {
                 .endsAt(request.endsAt())
                 .build();
         occurrenceRepository.save(occurrence);
+
+        return eventMapper.toEventResponse(event);
+    }
+
+    @Transactional
+    public EventResponse createRecurring(CreateRecurringEventRequest request, String ownerEmail) {
+        User owner = findUserOrThrow(ownerEmail);
+        Venue venue = venueRepository.findById(request.venueId())
+                .orElseThrow(() -> new ResourceNotFoundException("Venue hittades inte: " + request.venueId()));
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Kategori hittades inte: " + request.categoryId()));
+
+        // Validate timezone and RRULE syntax early to fail fast
+        ZoneId.of(request.timezone());
+
+        Event event = Event.builder()
+                .title(request.title())
+                .description(request.description())
+                .venue(venue)
+                .category(category)
+                .owner(owner)
+                .build();
+        event = eventRepository.save(event);
+
+        recurrenceRuleRepository.save(
+                RecurrenceRule.builder()
+                        .event(event)
+                        .rrule(request.rrule())
+                        .startTime(request.startTime())
+                        .durationMinutes(request.durationMinutes())
+                        .timezone(request.timezone())
+                        .build()
+        );
 
         return eventMapper.toEventResponse(event);
     }

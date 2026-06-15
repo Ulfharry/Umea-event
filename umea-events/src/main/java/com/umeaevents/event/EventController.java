@@ -1,6 +1,7 @@
 package com.umeaevents.event;
 
 import com.umeaevents.event.dto.CreateEventRequest;
+import com.umeaevents.event.dto.CreateRecurringEventRequest;
 import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -57,6 +58,17 @@ public class EventController {
             @Valid @RequestBody CreateEventRequest request,
             @AuthenticationPrincipal UserDetails user) {
         return eventService.create(request, user.getUsername());
+    }
+
+    @PostMapping("/recurring")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasAnyRole('RESTAURANT', 'ADMIN')")
+    @Operation(summary = "Skapa återkommande event (skapas som DRAFT, occurrences genereras av jobb)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public EventResponse createRecurring(
+            @Valid @RequestBody CreateRecurringEventRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        return eventService.createRecurring(request, user.getUsername());
     }
 
     @PostMapping("/{id}/submit")

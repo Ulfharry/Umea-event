@@ -8,13 +8,14 @@ import java.time.OffsetDateTime;
 import java.util.UUID;
 
 @Entity
-@Table(name = "event_occurrence")
+@Table(name = "occurrence_override",
+       uniqueConstraints = @UniqueConstraint(columnNames = {"event_id", "original_date"}))
 @Getter
 @Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class EventOccurrence {
+public class OccurrenceOverride {
 
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
@@ -24,15 +25,19 @@ public class EventOccurrence {
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;
 
-    @Column(nullable = false, columnDefinition = "TIMESTAMPTZ")
-    private OffsetDateTime startsAt;
+    @Column(nullable = false)
+    private LocalDate originalDate;
 
-    @Column(columnDefinition = "TIMESTAMPTZ")
-    private OffsetDateTime endsAt;
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    @Builder.Default
+    private OverrideStatus status = OverrideStatus.CANCELLED;
 
-    // Set only for occurrences belonging to a recurring series.
-    // NULL for one-off events. Used as idempotency key by the materializer job.
-    private LocalDate recurrenceDate;
+    private OffsetDateTime newStartsAt;
+    private OffsetDateTime newEndsAt;
+
+    @Column(columnDefinition = "TEXT")
+    private String reason;
 
     @Column(nullable = false)
     private OffsetDateTime createdAt;

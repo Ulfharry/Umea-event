@@ -2,6 +2,7 @@ package com.umeaevents;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Applikationens entrypoint. @SpringBootApplication aktiverar
@@ -9,6 +10,7 @@ import org.springframework.boot.autoconfigure.SpringBootApplication;
  * och konfigurationsegenskaper.
  */
 @SpringBootApplication
+@EnableScheduling
 public class UmeaEventsApplication {
 
     public static void main(String[] args) {
