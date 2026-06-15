@@ -1,5 +1,6 @@
 package com.umeaevents.common.exception;
 
+import com.umeaevents.scraping.ScrapingException;
 import jakarta.servlet.http.HttpServletRequest;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -39,6 +40,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<ErrorResponse> handleIllegalArgument(
             IllegalArgumentException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_REQUEST, ex.getMessage(), request, List.of());
+    }
+
+    @ExceptionHandler(ScrapingException.class)
+    public ResponseEntity<ErrorResponse> handleScraping(
+            ScrapingException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request, List.of());
     }
 
     @ExceptionHandler(IllegalStateException.class)

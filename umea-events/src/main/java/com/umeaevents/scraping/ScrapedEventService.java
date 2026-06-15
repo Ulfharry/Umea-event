@@ -16,6 +16,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -115,6 +116,25 @@ public class ScrapedEventService {
         raw.setReviewedBy(admin);
         raw.setPromotedEvent(event);
         return ScrapedEventResponse.from(scrapedRepo.save(raw));
+    }
+
+    /**
+     * Persist candidates produced by a scraper. Status is always PENDING_REVIEW.
+     * NEVER call this with auto-publish intent — that violates the no-auto-publish rule.
+     */
+    @Transactional
+    public List<ScrapedEventResponse> saveFromScraper(List<ScrapeCandidate> candidates) {
+        return candidates.stream()
+                .map(c -> RawScrapedEvent.builder()
+                        .source(ScrapedEventSource.WEB_SCRAPER)
+                        .rawTitle(c.title())
+                        .rawDescription(c.description())
+                        .rawStartsAt(c.rawDateText())
+                        .status(ScrapedEventStatus.PENDING_REVIEW)
+                        .build())
+                .map(scrapedRepo::save)
+                .map(ScrapedEventResponse::from)
+                .toList();
     }
 
     private RawScrapedEvent findOrThrow(UUID id) {
