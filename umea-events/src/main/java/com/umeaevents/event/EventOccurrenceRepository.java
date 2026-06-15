@@ -7,6 +7,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 import java.time.LocalDate;
+import java.time.OffsetDateTime;
 import java.util.UUID;
 
 public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence, UUID> {
@@ -61,4 +62,7 @@ public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence
     );
 
     boolean existsByEventAndRecurrenceDate(Event event, LocalDate recurrenceDate);
+
+    @Query("SELECT COUNT(o) FROM EventOccurrence o WHERE o.startsAt >= :from AND o.startsAt <= :to")
+    long countByStartsAtBetween(@Param("from") OffsetDateTime from, @Param("to") OffsetDateTime to);
 }

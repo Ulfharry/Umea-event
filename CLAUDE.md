@@ -106,16 +106,16 @@ Full modell i arkitekturdokumentet. De beslut som styr koden:
 
 - [x] **M1 — Grundstruktur:** projekt, Postgres/compose, Flyway, OpenAPI, Actuator,
       GlobalExceptionHandler, `Category` + `GET /api/v1/categories`.
-- [ ] **M2 — Authentication:** `User`, `RefreshToken`, JWT (access+refresh), rollbaserad
+- [x] **M2 — Authentication:** `User`, `RefreshToken`, JWT (access+refresh), rollbaserad
       åtkomst, BCrypt/Argon2. **OBS:** Boot 4 → Spring Security 7; använd Security 7-API,
       inte 6-tutorials.
-- [ ] **M3 — Venues:** `Venue` CRUD, ägarskap, publik listning.
-- [ ] **M4 — Events:** `Event` + `EventOccurrence` (engångs), statusflöde.
-- [ ] **M5 — Search & Filter:** occurrence-sökning, Postgres full-text (`tsvector` + GIN).
-- [ ] **M6 — Recurring:** `RecurrenceRule`, materialiseringsjobb, occurrence-overrides,
+- [x] **M3 — Venues:** `Venue` CRUD, ägarskap, publik listning.
+- [x] **M4 — Events:** `Event` + `EventOccurrence` (engångs), statusflöde.
+- [x] **M5 — Search & Filter:** occurrence-sökning, Postgres full-text (`tsvector` + GIN).
+- [x] **M6 — Recurring:** `RecurrenceRule`, materialiseringsjobb, occurrence-overrides,
       DST-tester.
-- [ ] **M7 — Scraping:** `raw_scraped_event`, adapter per källa, admin-granskning/promotion.
-- [ ] **M8 — Admin Dashboard API:** aggregerade endpoints, moderering.
+- [x] **M7 — Scraping:** `raw_scraped_event`, adapter per källa, admin-granskning/promotion.
+- [x] **M8 — Admin Dashboard API:** aggregerade endpoints, moderering.
 
 Varje milstolpe ska lämna ett körbart, testat API-snitt — skjut inte tester till slutet.
 

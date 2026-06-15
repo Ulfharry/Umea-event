@@ -14,4 +14,6 @@ public interface RawScrapedEventRepository extends JpaRepository<RawScrapedEvent
     Page<RawScrapedEvent> findAll(Pageable pageable);
 
     Optional<RawScrapedEvent> findBySourceAndExternalId(ScrapedEventSource source, String externalId);
+
+    long countByStatus(ScrapedEventStatus status);
 }
