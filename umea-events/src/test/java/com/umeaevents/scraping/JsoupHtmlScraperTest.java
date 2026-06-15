@@ -108,12 +108,13 @@ class JsoupHtmlScraperTest {
     void allCandidates_haveCorrectSourceUrl() {
         var html = """
                 <html><body>
-                  <article><h2>Event</h2></article>
-                  <article><h2>Event 2</h2></article>
+                  <article><h2>Event</h2><p>Beskrivning ett</p></article>
+                  <article><h2>Event 2</h2><p>Beskrivning två</p></article>
                 </body></html>
                 """;
         var candidates = scraper.extractCandidates(Jsoup.parse(html, SOURCE_URL), SOURCE_URL);
 
+        assertThat(candidates).hasSize(2);
         assertThat(candidates).allMatch(c -> SOURCE_URL.equals(c.sourceUrl()));
     }
 
@@ -121,12 +122,63 @@ class JsoupHtmlScraperTest {
     void allCandidates_haveScrapedAtTimestamp() {
         var html = """
                 <html><body>
-                  <article><h2>Event</h2></article>
-                  <article><h2>Event 2</h2></article>
+                  <article><h2>Event</h2><p>Beskrivning ett</p></article>
+                  <article><h2>Event 2</h2><p>Beskrivning två</p></article>
                 </body></html>
                 """;
         var candidates = scraper.extractCandidates(Jsoup.parse(html, SOURCE_URL), SOURCE_URL);
 
         assertThat(candidates).allMatch(c -> c.scrapedAt() != null);
+    }
+
+    // ── junk filter ───────────────────────────────────────────────────────────
+
+    @Test
+    void titleOnly_candidatesAreFilteredOut() {
+        // Real-world case: a selector matches layout wrappers that all share the same page
+        // heading, producing many candidates with a title but no description and no date.
+        var html = """
+                <html><body>
+                  <div><h2>Event</h2><p>QUIZ varje onsdag, kom och spela!</p></div>
+                  <div><h2>Event</h2></div>
+                  <div><h2>Event</h2></div>
+                  <div><h2>Event</h2></div>
+                </body></html>
+                """;
+        var candidates = scraper.extractCandidates(Jsoup.parse(html, SOURCE_URL), SOURCE_URL);
+
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.get(0).description()).isEqualTo("QUIZ varje onsdag, kom och spela!");
+    }
+
+    @Test
+    void candidateWithDateButNoDescription_isKept() {
+        var html = """
+                <html><body>
+                  <article><h2>Livemusik</h2><time datetime="2026-09-01">1 sep</time></article>
+                  <article><h2>Tom rad</h2></article>
+                </body></html>
+                """;
+        var candidates = scraper.extractCandidates(Jsoup.parse(html, SOURCE_URL), SOURCE_URL);
+
+        assertThat(candidates).hasSize(1);
+        assertThat(candidates.get(0).title()).isEqualTo("Livemusik");
+        assertThat(candidates.get(0).rawDateText()).isEqualTo("2026-09-01");
+    }
+
+    @Test
+    void duplicateCandidates_areCollapsed() {
+        var html = """
+                <html><body>
+                  <article><h2>Pubquiz</h2><p>Samma text</p></article>
+                  <article><h2>Pubquiz</h2><p>Samma text</p></article>
+                  <article><h2>Annat</h2><p>Annan text</p></article>
+                </body></html>
+                """;
+        var candidates = scraper.extractCandidates(Jsoup.parse(html, SOURCE_URL), SOURCE_URL);
+
+        assertThat(candidates).hasSize(2);
+        assertThat(candidates).extracting(ScrapeCandidate::title)
+                .containsExactly("Pubquiz", "Annat");
     }
 }
