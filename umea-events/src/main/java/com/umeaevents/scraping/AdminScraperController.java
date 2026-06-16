@@ -63,7 +63,9 @@ public class AdminScraperController {
             return ResponseEntity.ok(List.of());
         }
 
+        // saveFromSitemap drops already-staged URLs, so an empty result means "nothing new".
         var saved = service.saveFromSitemap(candidates);
-        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+        var status = saved.isEmpty() ? HttpStatus.OK : HttpStatus.CREATED;
+        return ResponseEntity.status(status).body(saved);
     }
 }

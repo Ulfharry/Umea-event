@@ -16,8 +16,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -131,12 +134,31 @@ public class ScrapedEventService {
 
     /**
      * Persist candidates produced by the sitemap scraper. Each candidate has its own detail-page
-     * URL, which is stored as externalId so a future dedup step can recognise re-scrapes.
-     * Status is always PENDING_REVIEW.
+     * URL, stored as externalId. Candidates whose URL was already staged (in any status) are
+     * skipped, so a weekly re-scrape only surfaces genuinely new events. Newly staged rows are
+     * always PENDING_REVIEW.
      */
     @Transactional
     public List<ScrapedEventResponse> saveFromSitemap(List<ScrapeCandidate> candidates) {
-        return persist(candidates, true);
+        return persist(dropAlreadyStaged(candidates), true);
+    }
+
+    /**
+     * Drop candidates whose detail URL has already been scraped before (matched on externalId),
+     * and collapse any in-batch duplicate URLs. Candidates without a URL are always kept.
+     */
+    private List<ScrapeCandidate> dropAlreadyStaged(List<ScrapeCandidate> candidates) {
+        var urls = candidates.stream()
+                .map(ScrapeCandidate::sourceUrl)
+                .filter(Objects::nonNull)
+                .collect(Collectors.toSet());
+        if (urls.isEmpty()) {
+            return candidates;
+        }
+        var seen = new HashSet<>(scrapedRepo.findExistingExternalIds(ScrapedEventSource.WEB_SCRAPER, urls));
+        return candidates.stream()
+                .filter(c -> c.sourceUrl() == null || seen.add(c.sourceUrl()))
+                .toList();
     }
 
     private List<ScrapedEventResponse> persist(List<ScrapeCandidate> candidates, boolean urlAsExternalId) {

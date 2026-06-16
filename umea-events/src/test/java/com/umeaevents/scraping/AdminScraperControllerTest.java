@@ -233,6 +233,24 @@ class AdminScraperControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    void sitemap_allDuplicates_returns200WithEmptyList() throws Exception {
+        // Scraper finds candidates, but they were all staged before, so saveFromSitemap returns [].
+        var candidates = List.of(
+                new ScrapeCandidate("Old", "desc", null,
+                        "https://example.com/events/old/", OffsetDateTime.now())
+        );
+        when(sitemapScraper.scrape(any(), any())).thenReturn(candidates);
+        when(scrapedEventService.saveFromSitemap(candidates)).thenReturn(List.of());
+
+        mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SITEMAP_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     void sitemap_noCandidates_returns200AndDoesNotSave() throws Exception {
         when(sitemapScraper.scrape(any(), any())).thenReturn(List.of());
 
