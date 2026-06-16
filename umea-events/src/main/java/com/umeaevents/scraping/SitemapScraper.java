@@ -35,14 +35,6 @@ public class SitemapScraper {
     private static final List<String> TITLE_SELECTORS = List.of("h1", "h2");
     private static final List<String> DESCRIPTION_SELECTORS = List.of(".wysiwyg", "main p", "article p");
 
-    // Common Swedish / ISO date formats found in free-text descriptions.
-    private static final Pattern DATE_PATTERN = Pattern.compile(
-            "\\b(\\d{4}-\\d{2}-\\d{2}" +
-            "|\\d{1,2}[./]\\d{1,2}([./]\\d{2,4})?" +
-            "|\\d{1,2}\\s+(jan|feb|mar|apr|maj|jun|jul|aug|sep|okt|nov|dec)\\w*)",
-            Pattern.CASE_INSENSITIVE
-    );
-
     /**
      * Fetch the sitemap and every matching detail page, returning one candidate per page that
      * yields a usable title. A single broken detail page is skipped, not fatal.
@@ -109,7 +101,7 @@ public class SitemapScraper {
             return null;
         }
         var description = firstText(doc, DESCRIPTION_SELECTORS);
-        var dateText = description != null ? matchDate(description) : null;
+        var dateText = DateText.firstDate(description);
         return new ScrapeCandidate(title, description, dateText, url, OffsetDateTime.now());
     }
 
@@ -126,11 +118,6 @@ public class SitemapScraper {
             }
         }
         return null;
-    }
-
-    private static String matchDate(String text) {
-        var m = DATE_PATTERN.matcher(text);
-        return m.find() ? m.group().strip() : null;
     }
 
     private static String blankToNull(String s) {
