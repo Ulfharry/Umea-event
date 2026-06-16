@@ -8,6 +8,7 @@ public interface EventOccurrenceRow {
     UUID getEvent_id();
     String getTitle();
     String getDescription();
+    String getImage_url();
     UUID getVenue_id();
     String getVenue_name();
     UUID getCategory_id();

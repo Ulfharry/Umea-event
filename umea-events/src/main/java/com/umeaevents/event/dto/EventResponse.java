@@ -9,6 +9,7 @@ public record EventResponse(
         UUID id,
         String title,
         String description,
+        String imageUrl,
         UUID venueId,
         String venueName,
         UUID categoryId,

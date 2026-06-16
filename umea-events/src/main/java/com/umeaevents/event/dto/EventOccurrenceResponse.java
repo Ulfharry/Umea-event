@@ -10,6 +10,7 @@ public record EventOccurrenceResponse(
         UUID eventId,
         String title,
         String description,
+        String imageUrl,
         UUID venueId,
         String venueName,
         UUID categoryId,

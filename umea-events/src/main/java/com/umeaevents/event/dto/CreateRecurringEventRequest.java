@@ -9,6 +9,7 @@ import java.util.UUID;
 public record CreateRecurringEventRequest(
         @NotBlank String title,
         String description,
+        String imageUrl,
         @NotNull UUID venueId,
         @NotNull UUID categoryId,
         @NotBlank String rrule,

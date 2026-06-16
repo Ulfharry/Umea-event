@@ -9,6 +9,7 @@ import java.util.UUID;
 public record CreateEventRequest(
         @NotBlank String title,
         String description,
+        String imageUrl,
         @NotNull UUID venueId,
         @NotNull UUID categoryId,
         @NotNull OffsetDateTime startsAt,
