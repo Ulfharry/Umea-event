@@ -1,6 +1,7 @@
 package com.umeaevents.auth;
 
 import com.umeaevents.auth.dto.LoginRequest;
+import com.umeaevents.auth.dto.MeResponse;
 import com.umeaevents.auth.dto.RefreshRequest;
 import com.umeaevents.auth.dto.RegisterRequest;
 import com.umeaevents.auth.dto.TokenResponse;
@@ -74,6 +75,13 @@ public class AuthService {
         refreshTokenRepository.save(stored);
 
         return issueTokens(stored.getUser());
+    }
+
+    @Transactional(readOnly = true)
+    public MeResponse me(String email) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new ResourceNotFoundException("Användare hittades inte: " + email));
+        return new MeResponse(user.getId(), user.getEmail(), user.getRole());
     }
 
     private TokenResponse issueTokens(User user) {

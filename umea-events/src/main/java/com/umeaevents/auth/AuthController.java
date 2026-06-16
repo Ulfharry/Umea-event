@@ -1,15 +1,18 @@
 package com.umeaevents.auth;
 
 import com.umeaevents.auth.dto.LoginRequest;
+import com.umeaevents.auth.dto.MeResponse;
 import com.umeaevents.auth.dto.RefreshRequest;
 import com.umeaevents.auth.dto.RegisterRequest;
 import com.umeaevents.auth.dto.TokenResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
@@ -37,5 +40,12 @@ public class AuthController {
     @Operation(summary = "Förnya access-token med refresh-token")
     public TokenResponse refresh(@Valid @RequestBody RefreshRequest request) {
         return authService.refresh(request);
+    }
+
+    @GetMapping("/me")
+    @Operation(summary = "Hämta inloggad användare (id, e-post, roll)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public MeResponse me(@AuthenticationPrincipal UserDetails user) {
+        return authService.me(user.getUsername());
     }
 }

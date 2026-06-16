@@ -2,6 +2,7 @@ package com.umeaevents.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.umeaevents.auth.dto.LoginRequest;
+import com.umeaevents.auth.dto.MeResponse;
 import com.umeaevents.auth.dto.RegisterRequest;
 import com.umeaevents.auth.dto.TokenResponse;
 import com.umeaevents.user.Role;
@@ -11,13 +12,19 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.SpringBootTest.WebEnvironment;
 import org.springframework.http.MediaType;
+import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.context.WebApplicationContext;
 
+import java.util.UUID;
+
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.when;
+import static org.springframework.security.test.web.servlet.setup.SecurityMockMvcConfigurers.springSecurity;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
@@ -36,7 +43,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
-        mockMvc = MockMvcBuilders.webAppContextSetup(context).build();
+        mockMvc = MockMvcBuilders.webAppContextSetup(context).apply(springSecurity()).build();
     }
 
     @Test
@@ -87,5 +94,23 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").value("new.access.token"));
+    }
+
+    @Test
+    void me_noAuth_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/auth/me"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(username = "owner@test.com", roles = "RESTAURANT")
+    void me_authenticated_returnsUser() throws Exception {
+        var me = new MeResponse(UUID.randomUUID(), "owner@test.com", Role.RESTAURANT);
+        when(authService.me(eq("owner@test.com"))).thenReturn(me);
+
+        mockMvc.perform(get("/api/v1/auth/me"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.email").value("owner@test.com"))
+                .andExpect(jsonPath("$.role").value("RESTAURANT"));
     }
 }
