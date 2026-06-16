@@ -17,6 +17,7 @@ import java.util.List;
 public class AdminScraperController {
 
     private final JsoupHtmlScraper scraper;
+    private final SitemapScraper sitemapScraper;
     private final ScrapedEventService service;
 
     /**
@@ -39,6 +40,30 @@ public class AdminScraperController {
         }
 
         var saved = service.saveFromScraper(candidates);
+        return ResponseEntity.status(HttpStatus.CREATED).body(saved);
+    }
+
+    /**
+     * Fetch an XML sitemap, scrape each matching detail page, and save the results as
+     * PENDING_REVIEW. Suited to JS-rendered sites whose listing page hides most events.
+     * Never publishes anything automatically.
+     */
+    @PostMapping("/sitemap")
+    public ResponseEntity<List<ScrapedEventResponse>> sitemap(
+            @Valid @RequestBody SitemapScrapeRequest request) {
+
+        List<ScrapeCandidate> candidates;
+        try {
+            candidates = sitemapScraper.scrape(request.sitemapUrl(), request.urlPattern());
+        } catch (IOException e) {
+            throw new ScrapingException("Could not fetch sitemap: " + e.getMessage(), e);
+        }
+
+        if (candidates.isEmpty()) {
+            return ResponseEntity.ok(List.of());
+        }
+
+        var saved = service.saveFromSitemap(candidates);
         return ResponseEntity.status(HttpStatus.CREATED).body(saved);
     }
 }

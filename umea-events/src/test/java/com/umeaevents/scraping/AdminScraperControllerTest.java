@@ -37,6 +37,9 @@ class AdminScraperControllerTest {
     private JsoupHtmlScraper scraper;
 
     @MockitoBean
+    private SitemapScraper sitemapScraper;
+
+    @MockitoBean
     private ScrapedEventService scrapedEventService;
 
     private MockMvc mockMvc;
@@ -171,5 +174,86 @@ class AdminScraperControllerTest {
                         .content("{\"url\":\"https://unreachable.example.com\"}"))
                 .andExpect(status().isBadGateway())
                 .andExpect(jsonPath("$.message").value("Could not fetch URL: Connection refused"));
+    }
+
+    // ── /sitemap endpoint ─────────────────────────────────────────────────────
+
+    private static final String SITEMAP_BODY =
+            "{\"sitemapUrl\":\"https://example.com/sitemap.xml\",\"urlPattern\":\"/events/.+\"}";
+
+    @Test
+    void sitemap_noAuth_returns401() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SITEMAP_BODY))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "USER")
+    void sitemap_userRole_returns403() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SITEMAP_BODY))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void sitemap_missingFields_returns400() throws Exception {
+        mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"sitemapUrl\":\"https://example.com/sitemap.xml\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void sitemap_candidatesFound_returns201AsPendingReview() throws Exception {
+        var candidates = List.of(
+                new ScrapeCandidate("Musikquiz", "Varje onsdag", "13 dec",
+                        "https://example.com/events/musikquiz/", OffsetDateTime.now())
+        );
+        var saved = List.of(pendingResponse("Musikquiz"));
+        when(sitemapScraper.scrape("https://example.com/sitemap.xml", "/events/.+"))
+                .thenReturn(candidates);
+        when(scrapedEventService.saveFromSitemap(candidates)).thenReturn(saved);
+
+        mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SITEMAP_BODY))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].rawTitle").value("Musikquiz"))
+                .andExpect(jsonPath("$[0].status").value("PENDING_REVIEW"));
+
+        verify(scrapedEventService).saveFromSitemap(candidates);
+        verify(scrapedEventService, never()).saveFromScraper(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void sitemap_noCandidates_returns200AndDoesNotSave() throws Exception {
+        when(sitemapScraper.scrape(any(), any())).thenReturn(List.of());
+
+        mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SITEMAP_BODY))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(0));
+
+        verify(scrapedEventService, never()).saveFromSitemap(any());
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
+    void sitemap_unreachable_returns502() throws Exception {
+        when(sitemapScraper.scrape(any(), any())).thenThrow(new IOException("Connection refused"));
+
+        mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(SITEMAP_BODY))
+                .andExpect(status().isBadGateway())
+                .andExpect(jsonPath("$.message").value("Could not fetch sitemap: Connection refused"));
     }
 }

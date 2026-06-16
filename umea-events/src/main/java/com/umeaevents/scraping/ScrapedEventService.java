@@ -119,14 +119,31 @@ public class ScrapedEventService {
     }
 
     /**
-     * Persist candidates produced by a scraper. Status is always PENDING_REVIEW.
+     * Persist candidates produced by the single-page scraper. Status is always PENDING_REVIEW.
+     * No externalId is set: all candidates from one listing page share the same source URL,
+     * so it would be a useless (colliding) dedup key.
      * NEVER call this with auto-publish intent — that violates the no-auto-publish rule.
      */
     @Transactional
     public List<ScrapedEventResponse> saveFromScraper(List<ScrapeCandidate> candidates) {
+        return persist(candidates, false);
+    }
+
+    /**
+     * Persist candidates produced by the sitemap scraper. Each candidate has its own detail-page
+     * URL, which is stored as externalId so a future dedup step can recognise re-scrapes.
+     * Status is always PENDING_REVIEW.
+     */
+    @Transactional
+    public List<ScrapedEventResponse> saveFromSitemap(List<ScrapeCandidate> candidates) {
+        return persist(candidates, true);
+    }
+
+    private List<ScrapedEventResponse> persist(List<ScrapeCandidate> candidates, boolean urlAsExternalId) {
         return candidates.stream()
                 .map(c -> RawScrapedEvent.builder()
                         .source(ScrapedEventSource.WEB_SCRAPER)
+                        .externalId(urlAsExternalId ? c.sourceUrl() : null)
                         .rawTitle(c.title())
                         .rawDescription(c.description())
                         .rawStartsAt(c.rawDateText())
