@@ -1,0 +1,26 @@
+# Fly.io deploy config for the UVEN backend. Run `fly deploy` from this directory.
+# Only used if you choose Fly.io as the backend host. Region arn = Stockholm.
+app = "uven-api"
+primary_region = "arn"
+
+[build]
+  dockerfile = "Dockerfile"
+
+[http_service]
+  internal_port = 8080
+  force_https = true
+  auto_stop_machines = "stop"
+  auto_start_machines = true
+  # Keep one machine warm so the API doesn't cold-start (Spring Boot start ~ seconds).
+  min_machines_running = 1
+
+[[http_service.checks]]
+  interval = "15s"
+  timeout = "3s"
+  grace_period = "30s"
+  method = "GET"
+  path = "/actuator/health"
+
+[[vm]]
+  size = "shared-cpu-1x"
+  memory = "512mb"

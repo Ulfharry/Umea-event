@@ -55,3 +55,8 @@ app:
   bootstrap-admin:
     email: ${BOOTSTRAP_ADMIN_EMAIL:}
     password: ${BOOTSTRAP_ADMIN_PASSWORD:}
+
+  cors:
+    # Komma-separerad lista av tillåtna webb-origins (mönster tillåtna).
+    # Prod: sätt CORS_ALLOWED_ORIGINS=https://admin.uven.se
+    allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:*}
