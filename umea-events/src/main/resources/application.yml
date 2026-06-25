@@ -49,3 +49,9 @@ app:
     secret: ${JWT_SECRET:umea-events-secret-key-must-be-at-least-32-chars-long}
     access-token-expiration-ms: 900000    # 15 minuter
     refresh-token-expiration-days: 7
+
+  # Skapar ett första ADMIN-konto vid uppstart OM båda är satta och kontot inte redan finns.
+  # Sätts via miljövariabler i produktion (en färsk DB har annars ingen admin att logga in med).
+  bootstrap-admin:
+    email: ${BOOTSTRAP_ADMIN_EMAIL:}
+    password: ${BOOTSTRAP_ADMIN_PASSWORD:}
