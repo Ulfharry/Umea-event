@@ -27,6 +27,12 @@ public class VenueService {
         return venueRepository.findAllByActiveTrue(pageable).map(venueMapper::toResponse);
     }
 
+    public Page<VenueResponse> listMine(String ownerEmail, Pageable pageable) {
+        User owner = userRepository.findByEmail(ownerEmail)
+                .orElseThrow(() -> new ResourceNotFoundException("Användare hittades inte: " + ownerEmail));
+        return venueRepository.findByOwnerIdAndActiveTrue(owner.getId(), pageable).map(venueMapper::toResponse);
+    }
+
     public VenueResponse getById(UUID id) {
         return venueMapper.toResponse(findActiveOrThrow(id));
     }

@@ -33,6 +33,13 @@ public class VenueController {
         return venueService.listActive(pageable);
     }
 
+    @GetMapping("/mine")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Lista inloggad ägares venues", security = @SecurityRequirement(name = "bearerAuth"))
+    public Page<VenueResponse> listMine(@AuthenticationPrincipal UserDetails user, Pageable pageable) {
+        return venueService.listMine(user.getUsername(), pageable);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Hämta en specifik venue")
     public VenueResponse getById(@PathVariable UUID id) {
