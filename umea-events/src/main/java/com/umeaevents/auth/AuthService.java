@@ -6,6 +6,7 @@ import com.umeaevents.auth.dto.RefreshRequest;
 import com.umeaevents.auth.dto.RegisterRequest;
 import com.umeaevents.auth.dto.TokenResponse;
 import com.umeaevents.common.exception.ResourceNotFoundException;
+import com.umeaevents.user.Role;
 import com.umeaevents.user.User;
 import com.umeaevents.user.UserRepository;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +37,11 @@ public class AuthService {
 
     @Transactional
     public TokenResponse register(RegisterRequest request) {
+        // Self-registration may never grant ADMIN. Admin rights are only assignable by an
+        // existing admin via PATCH /api/v1/admin/users/{id}/role.
+        if (request.role() == Role.ADMIN) {
+            throw new IllegalArgumentException("Admin-konton kan inte skapas via registrering");
+        }
         if (userRepository.existsByEmail(request.email())) {
             throw new IllegalArgumentException("E-postadressen är redan registrerad");
         }
