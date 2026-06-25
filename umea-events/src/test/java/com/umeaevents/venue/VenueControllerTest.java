@@ -110,6 +110,23 @@ class VenueControllerTest {
     }
 
     @Test
+    void listMine_noAuth_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/venues/mine"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "RESTAURANT", username = "owner@test.com")
+    void listMine_authenticated_returns200() throws Exception {
+        var page = new PageImpl<>(List.of(sampleVenue()), PageRequest.of(0, 20), 1);
+        when(venueService.listMine(eq("owner@test.com"), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/venues/mine"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].name").value("Bishops Arms"));
+    }
+
+    @Test
     @WithMockUser(roles = "RESTAURANT", username = "owner@test.com")
     void delete_asOwner_returns204() throws Exception {
         UUID id = UUID.randomUUID();

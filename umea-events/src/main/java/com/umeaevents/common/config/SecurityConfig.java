@@ -55,6 +55,8 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
+                        // Owner-scoped listings require auth — must come before the public GET rules below.
+                        .requestMatchers(HttpMethod.GET, "/api/v1/venues/mine", "/api/v1/events/mine").authenticated()
                         .requestMatchers(HttpMethod.GET, "/api/v1/venues", "/api/v1/venues/**").permitAll()
                         .requestMatchers(HttpMethod.GET, "/api/v1/events", "/api/v1/events/**").permitAll()
                         .requestMatchers("/api/v1/admin/**").hasRole("ADMIN")

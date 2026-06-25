@@ -44,6 +44,17 @@ public class EventController {
         return eventService.search(q, categoryId, venueId, from, to, pageable);
     }
 
+    @GetMapping("/mine")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Lista inloggad ägares event (alla statusar)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public Page<EventResponse> listMine(
+            @RequestParam(required = false) EventStatus status,
+            @AuthenticationPrincipal UserDetails user,
+            Pageable pageable) {
+        return eventService.listMine(user.getUsername(), status, pageable);
+    }
+
     @GetMapping("/{id}")
     @Operation(summary = "Hämta en specifik occurrence")
     public EventOccurrenceResponse getById(@PathVariable UUID id) {

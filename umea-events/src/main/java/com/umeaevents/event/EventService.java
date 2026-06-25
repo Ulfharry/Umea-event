@@ -50,6 +50,14 @@ public class EventService {
         ).map(eventMapper::toOccurrenceResponse);
     }
 
+    public Page<EventResponse> listMine(String ownerEmail, EventStatus status, Pageable pageable) {
+        User owner = findUserOrThrow(ownerEmail);
+        Page<Event> events = (status != null)
+                ? eventRepository.findByOwnerIdAndStatus(owner.getId(), status, pageable)
+                : eventRepository.findByOwnerId(owner.getId(), pageable);
+        return events.map(eventMapper::toEventResponse);
+    }
+
     public EventOccurrenceResponse getOccurrenceById(UUID occurrenceId) {
         EventOccurrence occurrence = occurrenceRepository.findById(occurrenceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Occurrence hittades inte: " + occurrenceId));

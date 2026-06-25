@@ -24,6 +24,10 @@ public interface EventRepository extends JpaRepository<Event, UUID> {
 
     Page<Event> findByVenueIdAndCategoryId(UUID venueId, UUID categoryId, Pageable pageable);
 
+    Page<Event> findByOwnerId(UUID ownerId, Pageable pageable);
+
+    Page<Event> findByOwnerIdAndStatus(UUID ownerId, EventStatus status, Pageable pageable);
+
     @Query("SELECT COUNT(e) FROM Event e WHERE e.status = :status")
     long countByStatus(@Param("status") EventStatus status);
 }

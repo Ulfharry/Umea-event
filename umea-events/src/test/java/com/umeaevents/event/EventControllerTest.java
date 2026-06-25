@@ -213,4 +213,21 @@ class EventControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.status").value("CANCELLED"));
     }
+
+    @Test
+    void mine_noAuth_returns401() throws Exception {
+        mockMvc.perform(get("/api/v1/events/mine"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    @WithMockUser(roles = "RESTAURANT", username = "owner@test.com")
+    void mine_authenticated_returns200() throws Exception {
+        var page = new PageImpl<>(List.of(sampleEvent()), PageRequest.of(0, 20), 1);
+        when(eventService.listMine(any(), any(), any())).thenReturn(page);
+
+        mockMvc.perform(get("/api/v1/events/mine"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].title").value("Pubquiz på Bishops"));
+    }
 }
