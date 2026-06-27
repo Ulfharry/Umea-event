@@ -97,6 +97,18 @@ class AuthControllerTest {
     }
 
     @Test
+    void login_wrongPassword_returns401() throws Exception {
+        var request = new LoginRequest("test@example.com", "wrong");
+        when(authService.login(any()))
+                .thenThrow(new org.springframework.security.authentication.BadCredentialsException("bad"));
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void me_noAuth_returns401() throws Exception {
         mockMvc.perform(get("/api/v1/auth/me"))
                 .andExpect(status().isUnauthorized());
