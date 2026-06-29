@@ -9,9 +9,9 @@ primary_region = "arn"
 [http_service]
   internal_port = 8080
   force_https = true
-  auto_stop_machines = "stop"
+  # Keep the machine always on — no cold starts / 503s on the first request after idle.
+  auto_stop_machines = false
   auto_start_machines = true
-  # Keep one machine warm so the API doesn't cold-start (Spring Boot start ~ seconds).
   min_machines_running = 1
 
 [[http_service.checks]]
