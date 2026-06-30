@@ -7,6 +7,9 @@ import com.umeaevents.event.EventOccurrence;
 import com.umeaevents.event.EventOccurrenceRepository;
 import com.umeaevents.event.EventRepository;
 import com.umeaevents.event.EventStatus;
+import com.umeaevents.event.OccurrenceMaterializerJob;
+import com.umeaevents.event.RecurrenceRule;
+import com.umeaevents.event.RecurrenceRuleRepository;
 import com.umeaevents.user.UserRepository;
 import com.umeaevents.venue.VenueRepository;
 import lombok.RequiredArgsConstructor;
@@ -16,6 +19,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.OffsetDateTime;
+import java.time.ZoneId;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Objects;
@@ -32,6 +36,8 @@ public class ScrapedEventService {
     private final VenueRepository venueRepository;
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
+    private final RecurrenceRuleRepository recurrenceRuleRepository;
+    private final OccurrenceMaterializerJob materializerJob;
 
     @Transactional
     public ScrapedEventResponse importManual(ImportScrapedEventRequest request) {
@@ -106,12 +112,18 @@ public class ScrapedEventService {
                 .build();
         eventRepository.save(event);
 
-        var occurrence = EventOccurrence.builder()
-                .event(event)
-                .startsAt(request.startsAt())
-                .endsAt(request.endsAt())
-                .build();
-        occurrenceRepository.save(occurrence);
+        if (request.recurrence() != null) {
+            promoteAsRecurring(event, request.recurrence());
+        } else {
+            if (request.startsAt() == null) {
+                throw new IllegalArgumentException("startsAt krävs för ett engångsevent (eller ange recurrence)");
+            }
+            occurrenceRepository.save(EventOccurrence.builder()
+                    .event(event)
+                    .startsAt(request.startsAt())
+                    .endsAt(request.endsAt())
+                    .build());
+        }
 
         raw.setStatus(ScrapedEventStatus.PROMOTED);
         raw.setAdminNotes(request.adminNotes());
@@ -174,6 +186,28 @@ public class ScrapedEventService {
                 .map(scrapedRepo::save)
                 .map(ScrapedEventResponse::from)
                 .toList();
+    }
+
+    private void promoteAsRecurring(Event event, PromoteScrapedEventRequest.RecurrenceInput rec) {
+        if (rec.rrule() == null || rec.rrule().isBlank()
+                || rec.startTime() == null
+                || rec.timezone() == null || rec.timezone().isBlank()) {
+            throw new IllegalArgumentException("Återkommande event kräver rrule, startTime och timezone");
+        }
+        try {
+            ZoneId.of(rec.timezone());
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("Ogiltig tidszon: " + rec.timezone());
+        }
+        var rule = recurrenceRuleRepository.save(RecurrenceRule.builder()
+                .event(event)
+                .rrule(rec.rrule())
+                .startTime(rec.startTime())
+                .durationMinutes(rec.durationMinutes())
+                .timezone(rec.timezone())
+                .build());
+        // Materialise immediately so the event shows up right away; the weekly job tops it up.
+        materializerJob.materializeRule(rule);
     }
 
     private RawScrapedEvent findOrThrow(UUID id) {

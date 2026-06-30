@@ -187,7 +187,7 @@ class AdminScrapedEventControllerTest {
 
         var body = new PromoteScrapedEventRequest(
                 UUID.randomUUID(), UUID.randomUUID(),
-                OffsetDateTime.parse("2026-07-01T17:00:00Z"), null, null
+                OffsetDateTime.parse("2026-07-01T17:00:00Z"), null, null, null
         );
         mockMvc.perform(post("/api/v1/admin/scraped-events/" + id + "/promote")
                         .contentType(MediaType.APPLICATION_JSON)

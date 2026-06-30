@@ -31,7 +31,7 @@ public class OccurrenceMaterializerJob {
         rules.forEach(this::materializeRule);
     }
 
-    void materializeRule(RecurrenceRule rule) {
+    public void materializeRule(RecurrenceRule rule) {
         ZoneId zone = ZoneId.of(rule.getTimezone());
         LocalDate today = LocalDate.now(zone);
         LocalDate horizonDate = today.plusDays(HORIZON_DAYS);
