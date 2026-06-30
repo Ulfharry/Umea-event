@@ -1,8 +1,14 @@
 package com.umeaevents.event;
 
-import java.time.OffsetDateTime;
+import java.time.Instant;
 import java.util.UUID;
 
+/**
+ * Native-query projection. timestamptz columns come back from the JDBC driver as
+ * {@link Instant} — declaring them as OffsetDateTime here makes Spring's projection fail with
+ * "Cannot project java.time.Instant to java.time.OffsetDateTime" once rows are returned.
+ * The mapper converts Instant → OffsetDateTime (UTC).
+ */
 public interface EventOccurrenceRow {
     UUID getId();
     UUID getEvent_id();
@@ -14,7 +20,7 @@ public interface EventOccurrenceRow {
     UUID getCategory_id();
     String getCategory_name();
     String getStatus();
-    OffsetDateTime getStarts_at();
-    OffsetDateTime getEnds_at();
-    OffsetDateTime getCreated_at();
+    Instant getStarts_at();
+    Instant getEnds_at();
+    Instant getCreated_at();
 }

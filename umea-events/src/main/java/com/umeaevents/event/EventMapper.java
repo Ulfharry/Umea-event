@@ -4,8 +4,16 @@ import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
 import org.springframework.stereotype.Component;
 
+import java.time.Instant;
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
+
 @Component
 public class EventMapper {
+
+    private static OffsetDateTime toOffset(Instant instant) {
+        return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
+    }
 
     public EventResponse toEventResponse(Event event) {
         return new EventResponse(
@@ -55,9 +63,9 @@ public class EventMapper {
                 row.getCategory_id(),
                 row.getCategory_name(),
                 EventStatus.valueOf(row.getStatus()),
-                row.getStarts_at(),
-                row.getEnds_at(),
-                row.getCreated_at()
+                toOffset(row.getStarts_at()),
+                toOffset(row.getEnds_at()),
+                toOffset(row.getCreated_at())
         );
     }
 }
