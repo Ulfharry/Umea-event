@@ -35,6 +35,7 @@ public class EventService {
     private final UserRepository userRepository;
     private final EventMapper eventMapper;
 
+    @Transactional(readOnly = true)
     public Page<EventOccurrenceResponse> search(
             String q, UUID categoryId, UUID venueId,
             OffsetDateTime from, OffsetDateTime to, Pageable pageable) {
@@ -50,6 +51,7 @@ public class EventService {
         ).map(eventMapper::toOccurrenceResponse);
     }
 
+    @Transactional(readOnly = true)
     public Page<EventResponse> listMine(String ownerEmail, EventStatus status, Pageable pageable) {
         User owner = findUserOrThrow(ownerEmail);
         Page<Event> events = (status != null)
@@ -58,6 +60,7 @@ public class EventService {
         return events.map(eventMapper::toEventResponse);
     }
 
+    @Transactional(readOnly = true)
     public EventOccurrenceResponse getOccurrenceById(UUID occurrenceId) {
         EventOccurrence occurrence = occurrenceRepository.findById(occurrenceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Occurrence hittades inte: " + occurrenceId));
