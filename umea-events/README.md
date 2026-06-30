@@ -1,8 +1,9 @@
-# Umeå Events — Backend
+# UVEN — Backend
 
-Spring Boot 4.0.x · Java 25 LTS · PostgreSQL · Flyway · OpenAPI
+Spring Boot 4 · Java 25 LTS · PostgreSQL · Flyway · Spring Security (JWT) · OpenAPI
 
-Milestone 1: grundstruktur + `GET /api/v1/categories`.
+Backend-modulen för UVEN. Se [rot-README:n](../README.md) för helhetsbild, arkitektur och
+live-demo. Det här dokumentet täcker hur du kör och testar backenden lokalt.
 
 ## Förutsättningar
 
