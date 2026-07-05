@@ -1,11 +1,13 @@
 package com.umeaevents.category;
 
 import com.umeaevents.category.dto.CategoryResponse;
+import com.umeaevents.common.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.UUID;
 
 /**
  * Affärslogiklagret. Controllern hanterar HTTP, repository hanterar SQL —
@@ -27,5 +29,14 @@ public class CategoryService {
         return repository.findByActiveTrueOrderByNameAsc().stream()
                 .map(mapper::toResponse)
                 .toList();
+    }
+
+    /** Admin: set the stock image URL for a category. */
+    @Transactional
+    public CategoryResponse updateImage(UUID id, String imageUrl) {
+        Category category = repository.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Kategori hittades inte: " + id));
+        category.setImageUrl(imageUrl);
+        return mapper.toResponse(repository.save(category));
     }
 }

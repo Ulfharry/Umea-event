@@ -4,6 +4,7 @@ import com.umeaevents.category.Category;
 import com.umeaevents.category.CategoryRepository;
 import com.umeaevents.common.exception.ResourceNotFoundException;
 import com.umeaevents.event.dto.CreateEventRequest;
+import com.umeaevents.event.dto.CreatePublishedEventRequest;
 import com.umeaevents.event.dto.CreateRecurringEventRequest;
 import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
@@ -209,16 +210,7 @@ public class EventService {
     }
 
     private void applyRecurrenceUpdate(Event event, RecurrenceRule rule, UpdateEventRequest.Recurrence rec) {
-        if (rec.rrule() == null || rec.rrule().isBlank()
-                || rec.startTime() == null
-                || rec.timezone() == null || rec.timezone().isBlank()) {
-            throw new IllegalArgumentException("Återkommande schema kräver rrule, startTime och timezone");
-        }
-        try {
-            ZoneId.of(rec.timezone());
-        } catch (RuntimeException e) {
-            throw new IllegalArgumentException("Ogiltig tidszon: " + rec.timezone());
-        }
+        validateRecurrence(rec.rrule(), rec.startTime(), rec.timezone());
         rule.setRrule(rec.rrule());
         rule.setStartTime(rec.startTime());
         rule.setDurationMinutes(rec.durationMinutes());
@@ -227,6 +219,54 @@ public class EventService {
         recurrenceRuleRepository.save(rule);
         occurrenceRepository.deleteByEvent(event); // clear occurrences generated with the old schedule
         materializerJob.materializeRule(rule);
+    }
+
+    private void validateRecurrence(String rrule, java.time.LocalTime startTime, String timezone) {
+        if (rrule == null || rrule.isBlank() || startTime == null || timezone == null || timezone.isBlank()) {
+            throw new IllegalArgumentException("Återkommande kräver rrule, startTime och timezone");
+        }
+        try {
+            ZoneId.of(timezone);
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("Ogiltig tidszon: " + timezone);
+        }
+    }
+
+    /** Admin: create an event straight to PUBLISHED — single occurrence or a materialised series. */
+    @Transactional
+    public EventResponse createPublished(CreatePublishedEventRequest request, String adminEmail) {
+        User owner = findUserOrThrow(adminEmail);
+        Venue venue = venueRepository.findById(request.venueId())
+                .orElseThrow(() -> new ResourceNotFoundException("Venue hittades inte: " + request.venueId()));
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Kategori hittades inte: " + request.categoryId()));
+
+        Event event = Event.builder()
+                .title(request.title())
+                .description(request.description())
+                .imageUrl(request.imageUrl())
+                .venue(venue)
+                .category(category)
+                .owner(owner)
+                .status(EventStatus.PUBLISHED)
+                .build();
+        eventRepository.save(event);
+
+        if (request.recurrence() != null) {
+            var rec = request.recurrence();
+            validateRecurrence(rec.rrule(), rec.startTime(), rec.timezone());
+            RecurrenceRule rule = recurrenceRuleRepository.save(RecurrenceRule.builder()
+                    .event(event).rrule(rec.rrule()).startTime(rec.startTime())
+                    .durationMinutes(rec.durationMinutes()).timezone(rec.timezone()).build());
+            materializerJob.materializeRule(rule);
+        } else {
+            if (request.startsAt() == null) {
+                throw new IllegalArgumentException("startsAt krävs för ett engångsevent (eller ange recurrence)");
+            }
+            occurrenceRepository.save(EventOccurrence.builder()
+                    .event(event).startsAt(request.startsAt()).endsAt(request.endsAt()).build());
+        }
+        return eventMapper.toEventResponse(event);
     }
 
     /** Permanently delete an event and its occurrences/rule/overrides (DB cascades). */

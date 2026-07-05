@@ -20,6 +20,7 @@ public class CategoryMapper {
                 category.getName(),
                 category.getSlug(),
                 category.getDescription(),
+                category.getImageUrl(),
                 category.isActive()
         );
     }

@@ -15,12 +15,18 @@ public class EventMapper {
         return instant == null ? null : instant.atOffset(ZoneOffset.UTC);
     }
 
+    /** Event image, falling back to the category's stock image so an event is never imageless. */
+    private static String effectiveImage(Event event) {
+        if (event.getImageUrl() != null) return event.getImageUrl();
+        return event.getCategory() != null ? event.getCategory().getImageUrl() : null;
+    }
+
     public EventResponse toEventResponse(Event event) {
         return new EventResponse(
                 event.getId(),
                 event.getTitle(),
                 event.getDescription(),
-                event.getImageUrl(),
+                effectiveImage(event),
                 event.getVenue().getId(),
                 event.getVenue().getName(),
                 event.getCategory().getId(),
@@ -39,7 +45,7 @@ public class EventMapper {
                 event.getId(),
                 event.getTitle(),
                 event.getDescription(),
-                event.getImageUrl(),
+                effectiveImage(event),
                 event.getVenue().getId(),
                 event.getVenue().getName(),
                 event.getCategory().getId(),

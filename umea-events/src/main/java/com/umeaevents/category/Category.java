@@ -43,6 +43,9 @@ public class Category {
     @Column(columnDefinition = "text")
     private String description;
 
+    @Column(columnDefinition = "text")
+    private String imageUrl;
+
     @Builder.Default
     @Column(nullable = false)
     private boolean active = true;

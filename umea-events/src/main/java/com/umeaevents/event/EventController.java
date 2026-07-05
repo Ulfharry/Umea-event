@@ -1,6 +1,7 @@
 package com.umeaevents.event;
 
 import com.umeaevents.event.dto.CreateEventRequest;
+import com.umeaevents.event.dto.CreatePublishedEventRequest;
 import com.umeaevents.event.dto.CreateRecurringEventRequest;
 import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
@@ -70,6 +71,16 @@ public class EventController {
             @Valid @RequestBody CreateEventRequest request,
             @AuthenticationPrincipal UserDetails user) {
         return eventService.create(request, user.getUsername());
+    }
+
+    @PostMapping("/published")
+    @ResponseStatus(HttpStatus.CREATED)
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Skapa event direkt som PUBLISHED (admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    public EventResponse createPublished(
+            @Valid @RequestBody CreatePublishedEventRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        return eventService.createPublished(request, user.getUsername());
     }
 
     @PostMapping("/recurring")

@@ -38,7 +38,7 @@ class CategoryControllerTest {
     @Test
     void getAll_returnsCategories() throws Exception {
         var pubquiz = new CategoryResponse(
-                UUID.randomUUID(), "Pubquiz", "pubquiz", "Frågesport på pub", true);
+                UUID.randomUUID(), "Pubquiz", "pubquiz", "Frågesport på pub", "https://img/pubquiz.jpg", true);
         when(categoryService.findAllActive()).thenReturn(List.of(pubquiz));
 
         mockMvc.perform(get("/api/v1/categories"))
