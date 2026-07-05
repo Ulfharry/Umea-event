@@ -64,6 +64,10 @@ public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence
 
     boolean existsByEventAndRecurrenceDate(Event event, LocalDate recurrenceDate);
 
+    java.util.Optional<EventOccurrence> findFirstByEventOrderByStartsAtAsc(Event event);
+
+    void deleteByEvent(Event event);
+
     @Query("SELECT COUNT(o) FROM EventOccurrence o WHERE o.startsAt >= :from AND o.startsAt <= :to")
     long countByStartsAtBetween(@Param("from") OffsetDateTime from, @Param("to") OffsetDateTime to);
 }

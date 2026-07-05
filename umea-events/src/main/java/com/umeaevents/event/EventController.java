@@ -4,6 +4,7 @@ import com.umeaevents.event.dto.CreateEventRequest;
 import com.umeaevents.event.dto.CreateRecurringEventRequest;
 import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
+import com.umeaevents.event.dto.UpdateEventRequest;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -107,5 +108,26 @@ public class EventController {
             @PathVariable UUID id,
             @AuthenticationPrincipal UserDetails user) {
         return eventService.cancel(id, user.getUsername());
+    }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Redigera event (ägare eller admin)", security = @SecurityRequirement(name = "bearerAuth"))
+    public EventResponse update(
+            @PathVariable UUID id,
+            @Valid @RequestBody UpdateEventRequest request,
+            @AuthenticationPrincipal UserDetails user) {
+        return eventService.update(id, request, user.getUsername());
+    }
+
+    @DeleteMapping("/{id}")
+    @ResponseStatus(HttpStatus.NO_CONTENT)
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Ta bort event permanent (ägare eller admin)",
+               security = @SecurityRequirement(name = "bearerAuth"))
+    public void delete(
+            @PathVariable UUID id,
+            @AuthenticationPrincipal UserDetails user) {
+        eventService.delete(id, user.getUsername());
     }
 }

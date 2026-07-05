@@ -1,13 +1,16 @@
 package com.umeaevents.admin;
 
+import com.umeaevents.event.Event;
 import com.umeaevents.event.EventRepository;
 import com.umeaevents.event.EventStatus;
+import com.umeaevents.event.RecurrenceRuleRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.Set;
 import java.util.UUID;
 
 @Service
@@ -15,6 +18,7 @@ import java.util.UUID;
 public class AdminEventService {
 
     private final EventRepository eventRepository;
+    private final RecurrenceRuleRepository recurrenceRuleRepository;
 
     @Transactional(readOnly = true)
     public Page<AdminEventResponse> listEvents(EventStatus status, UUID venueId, UUID categoryId, Pageable pageable) {
@@ -38,6 +42,10 @@ public class AdminEventService {
             page = eventRepository.findAll(pageable);
         }
 
-        return ((Page<com.umeaevents.event.Event>) page).map(AdminEventResponse::from);
+        @SuppressWarnings("unchecked")
+        Page<Event> events = (Page<Event>) page;
+        Set<UUID> recurringIds = recurrenceRuleRepository.findRecurringEventIds(
+                events.getContent().stream().map(Event::getId).toList());
+        return events.map(e -> AdminEventResponse.from(e, recurringIds.contains(e.getId())));
     }
 }

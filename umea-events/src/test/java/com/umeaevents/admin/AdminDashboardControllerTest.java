@@ -66,11 +66,12 @@ class AdminDashboardControllerTest {
 
     private AdminEventResponse sampleEvent() {
         return new AdminEventResponse(
-                UUID.randomUUID(), "Pubquiz", null,
+                UUID.randomUUID(), "Pubquiz", null, null,
                 UUID.randomUUID(), "Bishops Arms",
                 UUID.randomUUID(), "Quiz",
                 UUID.randomUUID(), "owner@test.com",
                 EventStatus.PENDING_REVIEW.name(),
+                false,
                 OffsetDateTime.now(), OffsetDateTime.now()
         );
     }

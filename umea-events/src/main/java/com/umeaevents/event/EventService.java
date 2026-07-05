@@ -7,6 +7,7 @@ import com.umeaevents.event.dto.CreateEventRequest;
 import com.umeaevents.event.dto.CreateRecurringEventRequest;
 import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
+import com.umeaevents.event.dto.UpdateEventRequest;
 import com.umeaevents.user.User;
 import com.umeaevents.user.UserRepository;
 import com.umeaevents.venue.Venue;
@@ -34,6 +35,7 @@ public class EventService {
     private final CategoryRepository categoryRepository;
     private final UserRepository userRepository;
     private final EventMapper eventMapper;
+    private final OccurrenceMaterializerJob materializerJob;
 
     @Transactional(readOnly = true)
     public Page<EventOccurrenceResponse> search(
@@ -162,6 +164,77 @@ public class EventService {
         }
         event.setStatus(EventStatus.CANCELLED);
         return eventMapper.toEventResponse(eventRepository.save(event));
+    }
+
+    /**
+     * Edit an event. Shared fields (title/description/image/venue/category) update the Event, so
+     * they apply to every occurrence. Schedule changes are optional and mode-specific: a single
+     * event updates its one occurrence; a recurring event updates its rule and regenerates the
+     * whole series.
+     */
+    @Transactional
+    public EventResponse update(UUID eventId, UpdateEventRequest request, String callerEmail) {
+        Event event = findEventOrThrow(eventId);
+        checkOwnerOrAdmin(event, callerEmail);
+
+        Venue venue = venueRepository.findById(request.venueId())
+                .orElseThrow(() -> new ResourceNotFoundException("Venue hittades inte: " + request.venueId()));
+        Category category = categoryRepository.findById(request.categoryId())
+                .orElseThrow(() -> new ResourceNotFoundException("Kategori hittades inte: " + request.categoryId()));
+
+        event.setTitle(request.title());
+        event.setDescription(request.description());
+        event.setImageUrl(request.imageUrl());
+        event.setVenue(venue);
+        event.setCategory(category);
+        eventRepository.save(event);
+
+        recurrenceRuleRepository.findByEvent(event).ifPresentOrElse(
+                rule -> {
+                    if (request.recurrence() != null) {
+                        applyRecurrenceUpdate(event, rule, request.recurrence());
+                    }
+                },
+                () -> {
+                    if (request.startsAt() != null) {
+                        EventOccurrence occ = occurrenceRepository.findFirstByEventOrderByStartsAtAsc(event)
+                                .orElseGet(() -> EventOccurrence.builder().event(event).build());
+                        occ.setStartsAt(request.startsAt());
+                        occ.setEndsAt(request.endsAt());
+                        occurrenceRepository.save(occ);
+                    }
+                });
+
+        return eventMapper.toEventResponse(event);
+    }
+
+    private void applyRecurrenceUpdate(Event event, RecurrenceRule rule, UpdateEventRequest.Recurrence rec) {
+        if (rec.rrule() == null || rec.rrule().isBlank()
+                || rec.startTime() == null
+                || rec.timezone() == null || rec.timezone().isBlank()) {
+            throw new IllegalArgumentException("Återkommande schema kräver rrule, startTime och timezone");
+        }
+        try {
+            ZoneId.of(rec.timezone());
+        } catch (RuntimeException e) {
+            throw new IllegalArgumentException("Ogiltig tidszon: " + rec.timezone());
+        }
+        rule.setRrule(rec.rrule());
+        rule.setStartTime(rec.startTime());
+        rule.setDurationMinutes(rec.durationMinutes());
+        rule.setTimezone(rec.timezone());
+        rule.setHorizon(null); // regenerate from today
+        recurrenceRuleRepository.save(rule);
+        occurrenceRepository.deleteByEvent(event); // clear occurrences generated with the old schedule
+        materializerJob.materializeRule(rule);
+    }
+
+    /** Permanently delete an event and its occurrences/rule/overrides (DB cascades). */
+    @Transactional
+    public void delete(UUID eventId, String callerEmail) {
+        Event event = findEventOrThrow(eventId);
+        checkOwnerOrAdmin(event, callerEmail);
+        eventRepository.delete(event);
     }
 
     private Event findEventOrThrow(UUID id) {
