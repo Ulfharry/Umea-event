@@ -5,6 +5,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.http.HttpStatus;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
@@ -38,6 +39,12 @@ public class AdminDashboardController {
     @GetMapping("/users")
     public Page<AdminUserResponse> listUsers(Pageable pageable) {
         return userService.listUsers(pageable);
+    }
+
+    @PostMapping("/users")
+    @ResponseStatus(HttpStatus.CREATED)
+    public AdminUserResponse createUser(@Valid @RequestBody AdminCreateUserRequest request) {
+        return userService.createUser(request);
     }
 
     @PatchMapping("/users/{id}/role")

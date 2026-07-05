@@ -66,6 +66,19 @@ public class VenueService {
         return venueMapper.toResponse(venueRepository.save(venue));
     }
 
+    /**
+     * Admin-only: transfer a venue to another owner so that user can manage it and create events
+     * for it. Authorization is enforced at the controller ({@code hasRole('ADMIN')}).
+     */
+    @Transactional
+    public VenueResponse assignOwner(UUID venueId, UUID newOwnerId) {
+        Venue venue = findActiveOrThrow(venueId);
+        User owner = userRepository.findById(newOwnerId)
+                .orElseThrow(() -> new ResourceNotFoundException("Användare hittades inte: " + newOwnerId));
+        venue.setOwner(owner);
+        return venueMapper.toResponse(venueRepository.save(venue));
+    }
+
     @Transactional
     public void delete(UUID id, String callerEmail) {
         Venue venue = findActiveOrThrow(id);

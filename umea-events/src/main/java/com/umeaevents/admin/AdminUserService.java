@@ -1,10 +1,15 @@
 package com.umeaevents.admin;
 
 import com.umeaevents.common.exception.ResourceNotFoundException;
+import com.umeaevents.user.Role;
+import com.umeaevents.user.User;
 import com.umeaevents.user.UserRepository;
+import com.umeaevents.venue.Venue;
+import com.umeaevents.venue.VenueRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +20,44 @@ import java.util.UUID;
 public class AdminUserService {
 
     private final UserRepository userRepository;
+    private final VenueRepository venueRepository;
+    private final PasswordEncoder passwordEncoder;
 
     @Transactional(readOnly = true)
     public Page<AdminUserResponse> listUsers(Pageable pageable) {
         return userRepository.findAll(pageable).map(AdminUserResponse::from);
+    }
+
+    /**
+     * Create a user directly and, if venueIds are given, transfer those venues' ownership to it.
+     * ADMIN accounts cannot be created here — admin rights are granted only via {@link #changeRole}.
+     */
+    @Transactional
+    public AdminUserResponse createUser(AdminCreateUserRequest request) {
+        if (request.role() == Role.ADMIN) {
+            throw new IllegalArgumentException("Admin-konton kan inte skapas här; höj rollen via rolländring");
+        }
+        if (userRepository.existsByEmail(request.email())) {
+            throw new IllegalArgumentException("E-postadressen är redan registrerad");
+        }
+
+        User user = User.builder()
+                .email(request.email())
+                .passwordHash(passwordEncoder.encode(request.password()))
+                .role(request.role())
+                .build();
+        userRepository.save(user);
+
+        if (request.venueIds() != null) {
+            for (UUID venueId : request.venueIds()) {
+                Venue venue = venueRepository.findById(venueId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Venue hittades inte: " + venueId));
+                venue.setOwner(user);
+                venueRepository.save(venue);
+            }
+        }
+
+        return AdminUserResponse.from(user);
     }
 
     @Transactional
