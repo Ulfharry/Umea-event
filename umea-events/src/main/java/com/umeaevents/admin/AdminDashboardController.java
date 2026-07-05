@@ -54,4 +54,19 @@ public class AdminDashboardController {
             Principal principal) {
         return userService.changeRole(id, request, principal.getName());
     }
+
+    @PatchMapping("/users/{id}/active")
+    public AdminUserResponse setUserActive(
+            @PathVariable UUID id,
+            @Valid @RequestBody SetActiveRequest request,
+            Principal principal) {
+        return userService.setActive(id, request.active(), principal.getName());
+    }
+
+    @PatchMapping("/users/{id}/password")
+    public AdminUserResponse resetPassword(
+            @PathVariable UUID id,
+            @Valid @RequestBody ResetPasswordRequest request) {
+        return userService.resetPassword(id, request.password());
+    }
 }

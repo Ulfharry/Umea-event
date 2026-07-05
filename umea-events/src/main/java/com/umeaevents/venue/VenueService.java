@@ -3,6 +3,7 @@ package com.umeaevents.venue;
 import com.umeaevents.common.exception.ResourceNotFoundException;
 import com.umeaevents.user.User;
 import com.umeaevents.user.UserRepository;
+import com.umeaevents.venue.dto.AdminVenueResponse;
 import com.umeaevents.venue.dto.CreateVenueRequest;
 import com.umeaevents.venue.dto.UpdateVenueRequest;
 import com.umeaevents.venue.dto.VenueResponse;
@@ -25,6 +26,12 @@ public class VenueService {
 
     public Page<VenueResponse> listActive(Pageable pageable) {
         return venueRepository.findAllByActiveTrue(pageable).map(venueMapper::toResponse);
+    }
+
+    /** Admin listing: includes inactive venues and the owner's email. */
+    @Transactional(readOnly = true)
+    public Page<AdminVenueResponse> listForAdmin(Pageable pageable) {
+        return venueRepository.findAll(pageable).map(AdminVenueResponse::from);
     }
 
     public Page<VenueResponse> listMine(String ownerEmail, Pageable pageable) {
@@ -63,6 +70,18 @@ public class VenueService {
         if (request.type() != null) venue.setType(request.type());
         if (request.address() != null) venue.setAddress(request.address());
 
+        return venueMapper.toResponse(venueRepository.save(venue));
+    }
+
+    /**
+     * Admin-only: activate or deactivate a venue. Unlike {@link #delete}, this can also reactivate
+     * an inactive venue, so it looks the venue up regardless of its current active flag.
+     */
+    @Transactional
+    public VenueResponse setActive(UUID venueId, boolean active) {
+        Venue venue = venueRepository.findById(venueId)
+                .orElseThrow(() -> new ResourceNotFoundException("Venue hittades inte: " + venueId));
+        venue.setActive(active);
         return venueMapper.toResponse(venueRepository.save(venue));
     }
 

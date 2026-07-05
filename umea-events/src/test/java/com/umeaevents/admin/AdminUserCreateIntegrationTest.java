@@ -85,4 +85,51 @@ class AdminUserCreateIntegrationTest {
         assertThat(resp.ownerId()).isEqualTo(owner2.getId());
         assertThat(venueRepository.findById(venue.getId()).orElseThrow().getOwner().getId()).isEqualTo(owner2.getId());
     }
+
+    @Test
+    void setActive_deactivatesUser_andBlocksSelf() {
+        var adminUser = admin();
+        var target = userRepository.save(User.builder()
+                .email("t-" + UUID.randomUUID() + "@test.com").passwordHash("x").role(Role.RESTAURANT).build());
+
+        var resp = adminUserService.setActive(target.getId(), false, adminUser.getEmail());
+        assertThat(resp.active()).isFalse();
+        assertThat(userRepository.findById(target.getId()).orElseThrow().isActive()).isFalse();
+
+        // reactivate
+        assertThat(adminUserService.setActive(target.getId(), true, adminUser.getEmail()).active()).isTrue();
+
+        // cannot deactivate yourself
+        assertThatThrownBy(() -> adminUserService.setActive(adminUser.getId(), false, adminUser.getEmail()))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void resetPassword_changesHash() {
+        var target = userRepository.save(User.builder()
+                .email("p-" + UUID.randomUUID() + "@test.com").passwordHash("old-hash").role(Role.RESTAURANT).build());
+
+        adminUserService.resetPassword(target.getId(), "nyttlösen123");
+
+        var reloaded = userRepository.findById(target.getId()).orElseThrow();
+        assertThat(reloaded.getPasswordHash()).isNotEqualTo("old-hash");
+        assertThat(reloaded.getPasswordHash()).isNotEqualTo("nyttlösen123"); // stored hashed
+    }
+
+    @Test
+    void venueSetActive_deactivatesAndReactivates_andAdminListSeesInactive() {
+        var owner = admin();
+        var venue = venueOwnedBy(owner);
+
+        venueService.setActive(venue.getId(), false);
+        assertThat(venueRepository.findById(venue.getId()).orElseThrow().isActive()).isFalse();
+
+        // admin listing still includes the inactive venue
+        var found = venueService.listForAdmin(org.springframework.data.domain.PageRequest.of(0, 500))
+                .getContent().stream().filter(v -> v.id().equals(venue.getId())).findFirst().orElseThrow();
+        assertThat(found.active()).isFalse();
+        assertThat(found.ownerEmail()).isEqualTo(owner.getEmail());
+
+        assertThat(venueService.setActive(venue.getId(), true).active()).isTrue();
+    }
 }
