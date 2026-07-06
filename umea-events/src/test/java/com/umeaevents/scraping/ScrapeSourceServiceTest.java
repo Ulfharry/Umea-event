@@ -52,7 +52,7 @@ class ScrapeSourceServiceTest {
         when(sourceRepo.existsBySitemapUrlAndUrlPattern(any(), any())).thenReturn(false);
         when(sourceRepo.save(any())).thenAnswer(inv -> inv.getArgument(0));
 
-        var result = service.create(new ScrapeSourceRequest("O'Learys", "https://x/s.xml", "/events/.+", null));
+        var result = service.create(new ScrapeSourceRequest("O'Learys", "https://x/s.xml", "/events/.+", null, null));
 
         assertThat(result.enabled()).isTrue();
     }
@@ -60,7 +60,7 @@ class ScrapeSourceServiceTest {
     @Test
     void create_invalidRegex_throwsBadRequest() {
         assertThatThrownBy(() ->
-                service.create(new ScrapeSourceRequest("Bad", "https://x/s.xml", "[unclosed", true)))
+                service.create(new ScrapeSourceRequest("Bad", "https://x/s.xml", "[unclosed", true, null)))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("Invalid urlPattern");
         verify(sourceRepo, never()).save(any());
@@ -71,7 +71,7 @@ class ScrapeSourceServiceTest {
         when(sourceRepo.existsBySitemapUrlAndUrlPattern(any(), any())).thenReturn(true);
 
         assertThatThrownBy(() ->
-                service.create(new ScrapeSourceRequest("Dup", "https://x/s.xml", "/events/.+", true)))
+                service.create(new ScrapeSourceRequest("Dup", "https://x/s.xml", "/events/.+", true, null)))
                 .isInstanceOf(IllegalStateException.class);
         verify(sourceRepo, never()).save(any());
     }
@@ -92,7 +92,7 @@ class ScrapeSourceServiceTest {
     @Test
     void runSource_stagesEventsAndRecordsSuccess() throws Exception {
         var s = source();
-        when(sitemapScraper.scrape(s.getSitemapUrl(), s.getUrlPattern()))
+        when(sitemapScraper.scrape(any(), any(), any()))
                 .thenReturn(List.of(new ScrapeCandidate("E", "d", null, "https://x/events/e/", OffsetDateTime.now())));
         when(scrapedEventService.saveFromSitemap(any())).thenReturn(List.of(stub(), stub()));
 
@@ -108,7 +108,7 @@ class ScrapeSourceServiceTest {
     @Test
     void runSource_fetchFailure_recordsErrorAndRethrows() throws Exception {
         var s = source();
-        when(sitemapScraper.scrape(any(), any())).thenThrow(new IOException("boom"));
+        when(sitemapScraper.scrape(any(), any(), any())).thenThrow(new IOException("boom"));
 
         assertThatThrownBy(() -> service.runSource(s)).isInstanceOf(IOException.class);
 
@@ -132,7 +132,7 @@ class ScrapeSourceServiceTest {
     void runNow_fetchFailure_throwsScrapingException() throws Exception {
         var s = source();
         when(sourceRepo.findById(s.getId())).thenReturn(Optional.of(s));
-        when(sitemapScraper.scrape(any(), any())).thenThrow(new IOException("dns"));
+        when(sitemapScraper.scrape(any(), any(), any())).thenThrow(new IOException("dns"));
 
         assertThatThrownBy(() -> service.runNow(s.getId()))
                 .isInstanceOf(ScrapingException.class)

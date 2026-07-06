@@ -52,9 +52,12 @@ public class AdminScraperController {
     public ResponseEntity<List<ScrapedEventResponse>> sitemap(
             @Valid @RequestBody SitemapScrapeRequest request) {
 
+        var cutoff = request.maxAgeDays() != null
+                ? java.time.OffsetDateTime.now().minusDays(request.maxAgeDays())
+                : null;
         List<ScrapeCandidate> candidates;
         try {
-            candidates = sitemapScraper.scrape(request.sitemapUrl(), request.urlPattern());
+            candidates = sitemapScraper.scrape(request.sitemapUrl(), request.urlPattern(), cutoff);
         } catch (IOException e) {
             throw new ScrapingException("Could not fetch sitemap: " + e.getMessage(), e);
         }

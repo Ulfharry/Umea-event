@@ -215,7 +215,7 @@ class AdminScraperControllerTest {
                         "https://example.com/events/musikquiz/", OffsetDateTime.now())
         );
         var saved = List.of(pendingResponse("Musikquiz"));
-        when(sitemapScraper.scrape("https://example.com/sitemap.xml", "/events/.+"))
+        when(sitemapScraper.scrape(eq("https://example.com/sitemap.xml"), eq("/events/.+"), any()))
                 .thenReturn(candidates);
         when(scrapedEventService.saveFromSitemap(candidates)).thenReturn(saved);
 
@@ -239,7 +239,7 @@ class AdminScraperControllerTest {
                 new ScrapeCandidate("Old", "desc", null,
                         "https://example.com/events/old/", OffsetDateTime.now())
         );
-        when(sitemapScraper.scrape(any(), any())).thenReturn(candidates);
+        when(sitemapScraper.scrape(any(), any(), any())).thenReturn(candidates);
         when(scrapedEventService.saveFromSitemap(candidates)).thenReturn(List.of());
 
         mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
@@ -252,7 +252,7 @@ class AdminScraperControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void sitemap_noCandidates_returns200AndDoesNotSave() throws Exception {
-        when(sitemapScraper.scrape(any(), any())).thenReturn(List.of());
+        when(sitemapScraper.scrape(any(), any(), any())).thenReturn(List.of());
 
         mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -266,7 +266,7 @@ class AdminScraperControllerTest {
     @Test
     @WithMockUser(roles = "ADMIN")
     void sitemap_unreachable_returns502() throws Exception {
-        when(sitemapScraper.scrape(any(), any())).thenThrow(new IOException("Connection refused"));
+        when(sitemapScraper.scrape(any(), any(), any())).thenThrow(new IOException("Connection refused"));
 
         mockMvc.perform(post("/api/v1/admin/scraper/sitemap")
                         .contentType(MediaType.APPLICATION_JSON)

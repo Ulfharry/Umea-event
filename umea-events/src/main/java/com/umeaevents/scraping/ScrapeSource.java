@@ -36,6 +36,12 @@ public class ScrapeSource {
     @Builder.Default
     private boolean enabled = true;
 
+    /**
+     * Freshness filter: skip sitemap URLs whose {@code <lastmod>} is older than this many days.
+     * NULL means no filtering.
+     */
+    private Integer maxAgeDays;
+
     private OffsetDateTime lastRunAt;
 
     private Integer lastRunNewCount;

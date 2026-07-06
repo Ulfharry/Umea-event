@@ -49,7 +49,7 @@ class AdminScrapeSourceControllerTest {
 
     private ScrapeSourceResponse response() {
         return new ScrapeSourceResponse(UUID.randomUUID(), "O'Learys", "https://x/s.xml",
-                "/events/.+", true, null, null, null, OffsetDateTime.now());
+                "/events/.+", true, null, null, null, null, OffsetDateTime.now());
     }
 
     // ── auth ──────────────────────────────────────────────────────────────────

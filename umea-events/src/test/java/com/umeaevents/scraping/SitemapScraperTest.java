@@ -4,6 +4,8 @@ import org.jsoup.Jsoup;
 import org.jsoup.parser.Parser;
 import org.junit.jupiter.api.Test;
 
+import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -61,6 +63,61 @@ class SitemapScraperTest {
                 "/events/.+");
 
         assertThat(filtered).containsExactly("https://x/events/a/", "https://x/events/b/");
+    }
+
+    // ── lastmod freshness filtering ─────────────────────────────────────────────
+
+    private static final String SITEMAP_WITH_LASTMOD = """
+            <?xml version="1.0" encoding="UTF-8"?>
+            <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+              <url><loc>https://x/events/fresh/</loc><lastmod>2026-06-15T10:14:33.543Z</lastmod></url>
+              <url><loc>https://x/events/old/</loc><lastmod>2025-01-02T08:00:00.000Z</lastmod></url>
+              <url><loc>https://x/events/dateonly/</loc><lastmod>2026-06-20</lastmod></url>
+              <url><loc>https://x/events/nomod/</loc></url>
+            </urlset>
+            """;
+
+    @Test
+    void parseLastmod_handlesFullInstantAndDateOnly() {
+        assertThat(SitemapScraper.parseLastmod("2026-06-15T10:14:33.543Z")).isNotNull();
+        assertThat(SitemapScraper.parseLastmod("2026-06-20")).isNotNull();
+        assertThat(SitemapScraper.parseLastmod("garbage")).isNull();
+        assertThat(SitemapScraper.parseLastmod("")).isNull();
+    }
+
+    @Test
+    void extractEntries_parsesLocAndLastmod() {
+        var doc = Jsoup.parse(SITEMAP_WITH_LASTMOD, "", Parser.xmlParser());
+        var entries = scraper.extractEntries(doc);
+
+        assertThat(entries).hasSize(4);
+        var nomod = entries.stream().filter(e -> e.loc().endsWith("/nomod/")).findFirst().orElseThrow();
+        assertThat(nomod.lastmod()).isNull();
+    }
+
+    @Test
+    void filterUrls_dropsStaleButKeepsFreshDateOnlyAndUnknown() {
+        var doc = Jsoup.parse(SITEMAP_WITH_LASTMOD, "", Parser.xmlParser());
+        var entries = scraper.extractEntries(doc);
+        var cutoff = OffsetDateTime.of(2026, 6, 1, 0, 0, 0, 0, ZoneOffset.UTC);
+
+        var kept = scraper.filterUrls(entries, "/events/.+", cutoff);
+
+        // fresh (Jun 15) + date-only (Jun 20) + unknown lastmod are kept; old (Jan 2025) is dropped
+        assertThat(kept).containsExactlyInAnyOrder(
+                "https://x/events/fresh/",
+                "https://x/events/dateonly/",
+                "https://x/events/nomod/");
+    }
+
+    @Test
+    void filterUrls_nullCutoff_keepsAll() {
+        var doc = Jsoup.parse(SITEMAP_WITH_LASTMOD, "", Parser.xmlParser());
+        var entries = scraper.extractEntries(doc);
+
+        var kept = scraper.filterUrls(entries, "/events/.+", null);
+
+        assertThat(kept).hasSize(4);
     }
 
     // ── detail-page extraction ──────────────────────────────────────────────────

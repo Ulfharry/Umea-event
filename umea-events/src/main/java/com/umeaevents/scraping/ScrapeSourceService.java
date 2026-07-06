@@ -31,7 +31,21 @@ public class ScrapeSourceService {
                 .sitemapUrl(request.sitemapUrl())
                 .urlPattern(request.urlPattern())
                 .enabled(request.enabled() == null || request.enabled())
+                .maxAgeDays(request.maxAgeDays())
                 .build();
+        return ScrapeSourceResponse.from(sourceRepo.save(source));
+    }
+
+    @Transactional
+    public ScrapeSourceResponse update(UUID id, ScrapeSourceRequest request) {
+        validatePattern(request.urlPattern());
+        var source = sourceRepo.findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Scrape source not found"));
+        source.setName(request.name());
+        source.setSitemapUrl(request.sitemapUrl());
+        source.setUrlPattern(request.urlPattern());
+        source.setEnabled(request.enabled() == null || request.enabled());
+        source.setMaxAgeDays(request.maxAgeDays());
         return ScrapeSourceResponse.from(sourceRepo.save(source));
     }
 
@@ -70,7 +84,10 @@ public class ScrapeSourceService {
      */
     int runSource(ScrapeSource source) throws IOException {
         try {
-            var candidates = sitemapScraper.scrape(source.getSitemapUrl(), source.getUrlPattern());
+            var cutoff = source.getMaxAgeDays() != null
+                    ? OffsetDateTime.now().minusDays(source.getMaxAgeDays())
+                    : null;
+            var candidates = sitemapScraper.scrape(source.getSitemapUrl(), source.getUrlPattern(), cutoff);
             var saved = scrapedEventService.saveFromSitemap(candidates);
             source.setLastRunAt(OffsetDateTime.now());
             source.setLastRunNewCount(saved.size());
