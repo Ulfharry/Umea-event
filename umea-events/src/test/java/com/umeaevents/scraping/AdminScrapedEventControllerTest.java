@@ -186,7 +186,7 @@ class AdminScrapedEventControllerTest {
         when(scrapedEventService.promote(eq(id), any(), eq("admin@test.com"))).thenReturn(promoted);
 
         var body = new PromoteScrapedEventRequest(
-                UUID.randomUUID(), UUID.randomUUID(),
+                UUID.randomUUID(), UUID.randomUUID(), null, null,
                 OffsetDateTime.parse("2026-07-01T17:00:00Z"), null, null, null
         );
         mockMvc.perform(post("/api/v1/admin/scraped-events/" + id + "/promote")

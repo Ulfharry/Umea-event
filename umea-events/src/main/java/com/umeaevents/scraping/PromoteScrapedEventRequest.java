@@ -12,10 +12,15 @@ import java.util.UUID;
  * <p>Either a single occurrence (provide {@code startsAt}) or a recurring series (provide
  * {@code recurrence}). When {@code recurrence} is set, {@code startsAt}/{@code endsAt} are ignored
  * and the materialisation job generates concrete occurrences from the rule.
+ *
+ * <p>{@code title}/{@code description} let the admin edit the scraped text before publishing;
+ * when blank the raw scraped values are used.
  */
 public record PromoteScrapedEventRequest(
         @NotNull UUID venueId,
         @NotNull UUID categoryId,
+        String title,
+        String description,
         OffsetDateTime startsAt,
         OffsetDateTime endsAt,
         String adminNotes,

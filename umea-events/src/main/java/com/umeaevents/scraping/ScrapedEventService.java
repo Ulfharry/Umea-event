@@ -102,9 +102,13 @@ public class ScrapedEventService {
         var category = categoryRepository.findById(request.categoryId())
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
 
+        // Admin may have edited the scraped title/description in the promote form; fall back to raw.
+        var title = hasText(request.title()) ? request.title().trim() : raw.getRawTitle();
+        var description = hasText(request.description()) ? request.description().trim() : raw.getRawDescription();
+
         var event = Event.builder()
-                .title(raw.getRawTitle())
-                .description(raw.getRawDescription())
+                .title(title)
+                .description(description)
                 .venue(venue)
                 .category(category)
                 .owner(admin)
@@ -213,6 +217,10 @@ public class ScrapedEventService {
     private RawScrapedEvent findOrThrow(UUID id) {
         return scrapedRepo.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Scraped event not found"));
+    }
+
+    private static boolean hasText(String s) {
+        return s != null && !s.isBlank();
     }
 
     private OffsetDateTime parseTimestamp(String s) {
