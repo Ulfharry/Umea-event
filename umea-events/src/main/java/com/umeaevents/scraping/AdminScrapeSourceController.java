@@ -32,6 +32,11 @@ public class AdminScrapeSourceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(request));
     }
 
+    @PutMapping("/{id}")
+    public ScrapeSourceResponse update(@PathVariable UUID id, @Valid @RequestBody ScrapeSourceRequest request) {
+        return service.update(id, request);
+    }
+
     @DeleteMapping("/{id}")
     public ResponseEntity<Void> delete(@PathVariable UUID id) {
         service.delete(id);

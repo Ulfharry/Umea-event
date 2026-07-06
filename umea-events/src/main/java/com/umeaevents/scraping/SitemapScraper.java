@@ -2,11 +2,14 @@ package com.umeaevents.scraping;
 
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
+import org.jsoup.nodes.Element;
 import org.jsoup.parser.Parser;
 import org.springframework.stereotype.Service;
 
 import java.io.IOException;
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.regex.Pattern;
@@ -35,20 +38,30 @@ public class SitemapScraper {
     private static final List<String> TITLE_SELECTORS = List.of("h1", "h2");
     private static final List<String> DESCRIPTION_SELECTORS = List.of(".wysiwyg", "main p", "article p");
 
+    /** Backward-compatible entry point: no freshness filtering. */
+    public List<ScrapeCandidate> scrape(String sitemapUrl, String urlPattern) throws IOException {
+        return scrape(sitemapUrl, urlPattern, null);
+    }
+
     /**
      * Fetch the sitemap and every matching detail page, returning one candidate per page that
      * yields a usable title. A single broken detail page is skipped, not fatal.
      *
+     * <p>When {@code notModifiedBefore} is set, sitemap URLs whose {@code <lastmod>} is older than
+     * it are skipped — a cheap way to keep stale/old events out of the queue. URLs without a
+     * parseable {@code <lastmod>} are kept (we can't judge their age).
+     *
      * @throws IOException if the sitemap itself cannot be fetched
      */
-    public List<ScrapeCandidate> scrape(String sitemapUrl, String urlPattern) throws IOException {
+    public List<ScrapeCandidate> scrape(String sitemapUrl, String urlPattern,
+                                        OffsetDateTime notModifiedBefore) throws IOException {
         Document xml = Jsoup.connect(sitemapUrl)
                 .userAgent(USER_AGENT)
                 .timeout(TIMEOUT_MS)
                 .parser(Parser.xmlParser())
                 .get();
 
-        var urls = filterUrls(extractLocs(xml), urlPattern);
+        var urls = filterUrls(extractEntries(xml), urlPattern, notModifiedBefore);
 
         var candidates = new ArrayList<ScrapeCandidate>();
         for (var url : urls) {
@@ -86,6 +99,55 @@ public class SitemapScraper {
                 .distinct()
                 .limit(MAX_PAGES)
                 .toList();
+    }
+
+    /** A sitemap {@code <url>} entry: its location and optional last-modified time. */
+    record SitemapEntry(String loc, OffsetDateTime lastmod) {}
+
+    /** Extract {@code <url>} entries (loc + parsed lastmod) from a parsed sitemap document. */
+    List<SitemapEntry> extractEntries(Document sitemap) {
+        var entries = new ArrayList<SitemapEntry>();
+        for (Element urlEl : sitemap.select("url")) {
+            var locEl = urlEl.selectFirst("loc");
+            if (locEl == null) continue;
+            var loc = locEl.text().strip();
+            if (loc.isBlank()) continue;
+            var lastmodEl = urlEl.selectFirst("lastmod");
+            var lastmod = lastmodEl != null ? parseLastmod(lastmodEl.text().strip()) : null;
+            entries.add(new SitemapEntry(loc, lastmod));
+        }
+        return entries;
+    }
+
+    /**
+     * Keep distinct URLs matching the pattern and, when {@code notModifiedBefore} is set, fresh
+     * enough. Entries with no parseable lastmod are kept (age unknown). Capped at {@link #MAX_PAGES}.
+     */
+    List<String> filterUrls(List<SitemapEntry> entries, String urlPattern, OffsetDateTime notModifiedBefore) {
+        var pattern = Pattern.compile(urlPattern);
+        return entries.stream()
+                .filter(e -> pattern.matcher(e.loc()).find())
+                .filter(e -> notModifiedBefore == null || e.lastmod() == null
+                        || !e.lastmod().isBefore(notModifiedBefore))
+                .map(SitemapEntry::loc)
+                .distinct()
+                .limit(MAX_PAGES)
+                .toList();
+    }
+
+    /** Parse a sitemap lastmod (full ISO instant, or date-only) to an instant; null if unparseable. */
+    static OffsetDateTime parseLastmod(String value) {
+        if (value == null || value.isBlank()) return null;
+        try {
+            return OffsetDateTime.parse(value);
+        } catch (RuntimeException ignored) {
+            // fall through to date-only
+        }
+        try {
+            return LocalDate.parse(value).atStartOfDay().atOffset(ZoneOffset.UTC);
+        } catch (RuntimeException ignored) {
+            return null;
+        }
     }
 
     /**
