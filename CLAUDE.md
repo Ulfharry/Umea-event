@@ -43,7 +43,7 @@ mvn test                    # tester
 mvn clean verify            # full byggverifiering före commit
 ```
 
-Verifiera health: `curl http://localhost:8080/api/v1/categories` → åtta kategorier.
+Verifiera health: `curl http://localhost:8080/api/v1/categories` → sex kategorier.
 Swagger: `http://localhost:8080/swagger-ui.html` · Health: `/actuator/health`
 
 ---
@@ -85,7 +85,8 @@ Full modell i arkitekturdokumentet. De beslut som styr koden:
   materialiserar Occurrences upp till en rullande horisont. Inte ren beräkning vid läsning.
 - **Scrapad data hålls utanför kärnmodellen** i `raw_scraped_event` (status
   `PENDING_REVIEW`). Admin promotar godkända till riktiga Event+Occurrence.
-- **Category är en tabell** (inte enum) — seedad med de åtta kategorierna.
+- **Category är en tabell** (inte enum) — seedad, strömlinjeformad till sex breda kategorier
+  (Nattliv, Livemusik, Quiz, Sport, Gastronomi, Övriga event) i V16.
 - **Eventlivscykel:** `DRAFT → PENDING_REVIEW → PUBLISHED → CANCELLED/ARCHIVED`.
 
 ---
