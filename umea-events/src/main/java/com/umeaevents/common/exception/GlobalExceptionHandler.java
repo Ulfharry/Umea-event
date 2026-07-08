@@ -1,5 +1,6 @@
 package com.umeaevents.common.exception;
 
+import com.umeaevents.image.ImageUploadException;
 import com.umeaevents.scraping.ScrapingException;
 import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +11,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
 
 import java.time.Instant;
 import java.util.List;
@@ -48,6 +50,19 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(ScrapingException.class)
     public ResponseEntity<ErrorResponse> handleScraping(
             ScrapingException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request, List.of());
+    }
+
+    /** Uploaded file exceeds the multipart size limit → 400 with a clear message. */
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleMaxUpload(
+            MaxUploadSizeExceededException ex, HttpServletRequest request) {
+        return build(HttpStatus.BAD_REQUEST, "Bilden är för stor (max 5 MB)", request, List.of());
+    }
+
+    @ExceptionHandler(ImageUploadException.class)
+    public ResponseEntity<ErrorResponse> handleImageUpload(
+            ImageUploadException ex, HttpServletRequest request) {
         return build(HttpStatus.BAD_GATEWAY, ex.getMessage(), request, List.of());
     }
 
