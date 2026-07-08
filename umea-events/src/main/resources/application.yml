@@ -21,6 +21,11 @@ spring:
   flyway:
     enabled: false
 
+  servlet:
+    multipart:
+      max-file-size: 5MB
+      max-request-size: 6MB
+
 management:
   endpoints:
     web:
@@ -60,3 +65,10 @@ app:
     # Komma-separerad lista av tillåtna webb-origins (mönster tillåtna).
     # Prod: sätt CORS_ALLOWED_ORIGINS=https://admin.uven.se
     allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:*}
+
+  # Supabase Storage för bilduppladdning. Sätts via Fly-secrets i produktion.
+  # Tomma värden = uppladdning avstängd (endpointen svarar med fel).
+  storage:
+    supabase-url: ${SUPABASE_URL:}
+    service-key: ${SUPABASE_SERVICE_KEY:}
+    bucket: ${SUPABASE_BUCKET:event-images}
