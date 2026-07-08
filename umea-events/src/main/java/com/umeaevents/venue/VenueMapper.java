@@ -13,6 +13,7 @@ public class VenueMapper {
                 venue.getDescription(),
                 venue.getType(),
                 venue.getAddress(),
+                venue.getImageUrl(),
                 venue.getOwner().getId(),
                 venue.isActive(),
                 venue.getCreatedAt()

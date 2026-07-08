@@ -33,6 +33,9 @@ public class Venue {
     @Column(length = 300)
     private String address;
 
+    @Column(columnDefinition = "text")
+    private String imageUrl;
+
     @ManyToOne(fetch = FetchType.LAZY, optional = false)
     @JoinColumn(name = "owner_id", nullable = false)
     private User owner;

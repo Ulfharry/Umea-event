@@ -52,7 +52,7 @@ class VenueControllerTest {
     private VenueResponse sampleVenue() {
         return new VenueResponse(
                 UUID.randomUUID(), "Bishops Arms", "Engelsk pub", VenueType.PUB,
-                "Rådhusesplanaden 17", UUID.randomUUID(), true, OffsetDateTime.now());
+                "Rådhusesplanaden 17", null, UUID.randomUUID(), true, OffsetDateTime.now());
     }
 
     @Test
@@ -77,7 +77,7 @@ class VenueControllerTest {
 
     @Test
     void create_withoutAuth_returns401() throws Exception {
-        var request = new CreateVenueRequest("Test", null, VenueType.BAR, null);
+        var request = new CreateVenueRequest("Test", null, VenueType.BAR, null, null);
 
         mockMvc.perform(post("/api/v1/venues")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -88,7 +88,7 @@ class VenueControllerTest {
     @Test
     @WithMockUser(roles = "RESTAURANT")
     void create_withRestaurantRole_returns201() throws Exception {
-        var request = new CreateVenueRequest("Bishops Arms", "Engelsk pub", VenueType.PUB, "Rådhusesplanaden 17");
+        var request = new CreateVenueRequest("Bishops Arms", "Engelsk pub", VenueType.PUB, "Rådhusesplanaden 17", null);
         when(venueService.create(any(), any())).thenReturn(sampleVenue());
 
         mockMvc.perform(post("/api/v1/venues")
@@ -101,7 +101,7 @@ class VenueControllerTest {
     @Test
     @WithMockUser(roles = "USER")
     void create_withUserRole_returns403() throws Exception {
-        var request = new CreateVenueRequest("Test", null, VenueType.BAR, null);
+        var request = new CreateVenueRequest("Test", null, VenueType.BAR, null, null);
 
         mockMvc.perform(post("/api/v1/venues")
                         .contentType(MediaType.APPLICATION_JSON)

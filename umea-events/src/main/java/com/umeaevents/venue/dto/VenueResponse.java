@@ -11,6 +11,7 @@ public record VenueResponse(
         String description,
         VenueType type,
         String address,
+        String imageUrl,
         UUID ownerId,
         boolean active,
         OffsetDateTime createdAt

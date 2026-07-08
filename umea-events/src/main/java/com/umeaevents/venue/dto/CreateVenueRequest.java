@@ -9,5 +9,6 @@ public record CreateVenueRequest(
         @NotBlank @Size(max = 200) String name,
         String description,
         @NotNull VenueType type,
-        @Size(max = 300) String address
+        @Size(max = 300) String address,
+        String imageUrl
 ) {}

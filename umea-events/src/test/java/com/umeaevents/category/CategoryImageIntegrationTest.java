@@ -63,4 +63,28 @@ class CategoryImageIntegrationTest {
 
         assertThat(found.imageUrl()).isEqualTo("https://img.test/fallback.jpg");
     }
+
+    @Test
+    void search_prefersVenueImageOverCategoryWhenEventHasNone() {
+        var category = categoryRepository.findAll().get(0);
+        category.setImageUrl("https://img.test/cat-fallback.jpg");
+        categoryRepository.saveAndFlush(category);
+
+        var owner = userRepository.save(User.builder()
+                .email("o-" + UUID.randomUUID() + "@test.com").passwordHash("x").role(Role.RESTAURANT).build());
+        var venue = venueRepository.save(Venue.builder()
+                .name("L").type(VenueType.PUB).owner(owner)
+                .imageUrl("https://img.test/venue-logo.jpg").build());
+        var title = "Venuebild-" + UUID.randomUUID();
+        var event = eventRepository.save(Event.builder()
+                .title(title).venue(venue).category(category).owner(owner)
+                .status(EventStatus.PUBLISHED).build()); // imageUrl null
+        occurrenceRepository.saveAndFlush(EventOccurrence.builder()
+                .event(event).startsAt(OffsetDateTime.now().plusDays(1)).build());
+
+        var page = eventService.search(null, null, null, null, null, PageRequest.of(0, 50));
+        var found = page.getContent().stream().filter(o -> title.equals(o.title())).findFirst().orElseThrow();
+
+        assertThat(found.imageUrl()).isEqualTo("https://img.test/venue-logo.jpg");
+    }
 }

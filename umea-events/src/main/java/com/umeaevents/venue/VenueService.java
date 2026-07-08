@@ -54,6 +54,7 @@ public class VenueService {
                 .description(request.description())
                 .type(request.type())
                 .address(request.address())
+                .imageUrl(request.imageUrl())
                 .owner(owner)
                 .build();
 
@@ -69,6 +70,7 @@ public class VenueService {
         if (request.description() != null) venue.setDescription(request.description());
         if (request.type() != null) venue.setType(request.type());
         if (request.address() != null) venue.setAddress(request.address());
+        if (request.imageUrl() != null) venue.setImageUrl(request.imageUrl().isBlank() ? null : request.imageUrl());
 
         return venueMapper.toResponse(venueRepository.save(venue));
     }

@@ -19,7 +19,7 @@ public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence
                 e.id            AS event_id,
                 e.title,
                 e.description,
-                COALESCE(e.image_url, c.image_url) AS image_url,
+                COALESCE(e.image_url, v.image_url, c.image_url) AS image_url,
                 v.id            AS venue_id,
                 v.name          AS venue_name,
                 c.id            AS category_id,
