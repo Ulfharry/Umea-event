@@ -66,4 +66,38 @@ class EventSearchIntegrationTest {
         assertThat(found.venueName()).isEqualTo("Testlokal");
         assertThat(found.status()).isEqualTo(EventStatus.PUBLISHED);
     }
+
+    @Test
+    void search_matchesPartialWordsAndVenueName() {
+        var owner = userRepository.save(User.builder()
+                .email("owner-" + UUID.randomUUID() + "@test.com")
+                .passwordHash("x").role(Role.RESTAURANT).build());
+        Category category = categoryRepository.findAll().get(0);
+        // Venue name is NOT part of event.search_vector, so this only matches via the ILIKE branch.
+        var venueName = "Sjöbris-" + UUID.randomUUID();
+        var venue = venueRepository.save(Venue.builder()
+                .name(venueName).type(VenueType.RESTAURANT).owner(owner).build());
+        var title = "Livemusik-" + UUID.randomUUID();
+        var event = eventRepository.save(Event.builder()
+                .title(title).venue(venue).category(category).owner(owner)
+                .status(EventStatus.PUBLISHED).build());
+        occurrenceRepository.saveAndFlush(EventOccurrence.builder()
+                .event(event).startsAt(OffsetDateTime.now().plusDays(1)).build());
+
+        // partial word from the venue name ("sjöb") finds the event, though the title says Livemusik
+        assertThat(titles(eventService.search("sjöb", null, null, null, null, PageRequest.of(0, 200))))
+                .contains(title);
+
+        // partial word from the title, lower-cased
+        assertThat(titles(eventService.search("livemus", null, null, null, null, PageRequest.of(0, 200))))
+                .contains(title);
+
+        // unrelated term still excludes it
+        assertThat(titles(eventService.search("zzzz-ingenting", null, null, null, null, PageRequest.of(0, 200))))
+                .doesNotContain(title);
+    }
+
+    private java.util.List<String> titles(org.springframework.data.domain.Page<EventOccurrenceResponse> page) {
+        return page.getContent().stream().map(EventOccurrenceResponse::title).toList();
+    }
 }

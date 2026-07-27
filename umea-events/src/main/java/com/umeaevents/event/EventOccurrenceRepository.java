@@ -33,7 +33,10 @@ public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence
             JOIN venue    v ON v.id = e.venue_id
             JOIN category c ON c.id = e.category_id
             WHERE e.status = 'PUBLISHED'
-              AND (CAST(:q         AS TEXT)        IS NULL OR e.search_vector @@ plainto_tsquery('swedish', :q))
+              AND (CAST(:q          AS TEXT)        IS NULL
+                   OR e.search_vector @@ plainto_tsquery('swedish', CAST(:q AS TEXT))
+                   OR e.title ILIKE '%' || CAST(:q AS TEXT) || '%'
+                   OR v.name  ILIKE '%' || CAST(:q AS TEXT) || '%')
               AND (CAST(:categoryId AS UUID)        IS NULL OR e.category_id  = CAST(:categoryId AS UUID))
               AND (CAST(:venueId    AS UUID)        IS NULL OR e.venue_id     = CAST(:venueId    AS UUID))
               AND (CAST(:from       AS TIMESTAMPTZ) IS NULL OR o.starts_at   >= CAST(:from       AS TIMESTAMPTZ))
@@ -44,8 +47,12 @@ public interface EventOccurrenceRepository extends JpaRepository<EventOccurrence
             SELECT COUNT(*)
             FROM event_occurrence o
             JOIN event e ON e.id = o.event_id
+            JOIN venue v ON v.id = e.venue_id
             WHERE e.status = 'PUBLISHED'
-              AND (CAST(:q         AS TEXT)        IS NULL OR e.search_vector @@ plainto_tsquery('swedish', :q))
+              AND (CAST(:q          AS TEXT)        IS NULL
+                   OR e.search_vector @@ plainto_tsquery('swedish', CAST(:q AS TEXT))
+                   OR e.title ILIKE '%' || CAST(:q AS TEXT) || '%'
+                   OR v.name  ILIKE '%' || CAST(:q AS TEXT) || '%')
               AND (CAST(:categoryId AS UUID)        IS NULL OR e.category_id  = CAST(:categoryId AS UUID))
               AND (CAST(:venueId    AS UUID)        IS NULL OR e.venue_id     = CAST(:venueId    AS UUID))
               AND (CAST(:from       AS TIMESTAMPTZ) IS NULL OR o.starts_at   >= CAST(:from       AS TIMESTAMPTZ))
