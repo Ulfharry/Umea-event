@@ -1,0 +1,49 @@
+name: Uptime
+
+# Polls the live API and public site. A failing run sends GitHub's usual
+# workflow-failure email to the person who created the workflow, so an outage
+# turns up in the inbox instead of being noticed days later by accident.
+on:
+  schedule:
+    - cron: '*/15 * * * *'
+  workflow_dispatch:
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    steps:
+      - name: API health (api.uven.se)
+        run: |
+          for attempt in 1 2 3; do
+            code=$(curl -sS -o /tmp/body -w '%{http_code}' --max-time 20 \
+              https://api.uven.se/actuator/health || echo 000)
+            if [ "$code" = "200" ] && grep -q '"status":"UP"' /tmp/body; then
+              echo "healthy (HTTP $code)"
+              exit 0
+            fi
+            echo "attempt $attempt failed: HTTP $code — $(cat /tmp/body 2>/dev/null | head -c 300)"
+            [ "$attempt" -lt 3 ] && sleep 30
+          done
+          echo "::error::api.uven.se did not report UP after 3 attempts over ~1 minute"
+          exit 1
+
+      - name: Public site (uven.se)
+        run: |
+          code=$(curl -sS -o /dev/null -w '%{http_code}' --max-time 20 https://uven.se/ || echo 000)
+          if [ "$code" != "200" ]; then
+            echo "::error::uven.se returned HTTP $code"
+            exit 1
+          fi
+          echo "uven.se OK (HTTP $code)"
+
+      - name: Events endpoint returns data
+        # A healthy JVM that can't reach the database still answers /actuator/health on some
+        # failure modes; this proves the whole read path works end to end.
+        run: |
+          code=$(curl -sS -o /tmp/events -w '%{http_code}' --max-time 20 \
+            'https://api.uven.se/api/v1/events?size=1' || echo 000)
+          if [ "$code" != "200" ]; then
+            echo "::error::/api/v1/events returned HTTP $code — $(head -c 300 /tmp/events)"
+            exit 1
+          fi
+          echo "events endpoint OK (HTTP $code)"
