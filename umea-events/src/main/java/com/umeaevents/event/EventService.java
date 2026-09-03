@@ -8,6 +8,8 @@ import com.umeaevents.event.dto.CreatePublishedEventRequest;
 import com.umeaevents.event.dto.CreateRecurringEventRequest;
 import com.umeaevents.event.dto.EventOccurrenceResponse;
 import com.umeaevents.event.dto.EventResponse;
+import com.umeaevents.event.dto.PickedDates;
+import com.umeaevents.event.dto.RecurrencePreviewRequest;
 import com.umeaevents.event.dto.UpdateEventRequest;
 import com.umeaevents.user.User;
 import com.umeaevents.user.UserRepository;
@@ -21,8 +23,11 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDate;
 import java.time.OffsetDateTime;
 import java.time.ZoneId;
+import java.time.ZonedDateTime;
+import java.util.List;
 import java.util.UUID;
 
 @Service
@@ -37,6 +42,8 @@ public class EventService {
     private final UserRepository userRepository;
     private final EventMapper eventMapper;
     private final OccurrenceMaterializerJob materializerJob;
+    private final OccurrenceOverrideRepository overrideRepository;
+    private final RecurrenceExpander expander;
 
     @Transactional(readOnly = true)
     public Page<EventOccurrenceResponse> search(
@@ -191,6 +198,13 @@ public class EventService {
         event.setCategory(category);
         eventRepository.save(event);
 
+        // A hand-picked calendar schedule replaces whatever occurrences the event had.
+        if (request.pickedDates() != null) {
+            occurrenceRepository.deleteByEvent(event);
+            createPickedOccurrences(event, request.pickedDates());
+            return eventMapper.toEventResponse(event);
+        }
+
         recurrenceRuleRepository.findByEvent(event).ifPresentOrElse(
                 rule -> {
                     if (request.recurrence() != null) {
@@ -220,7 +234,48 @@ public class EventService {
         rule.setHorizon(null); // regenerate from today
         recurrenceRuleRepository.save(rule);
         occurrenceRepository.deleteByEvent(event); // clear occurrences generated with the old schedule
+        // The submitted exclusions are authoritative — resync rather than accumulate.
+        overrideRepository.deleteByEventAndStatus(event, OverrideStatus.CANCELLED);
+        saveExclusions(event, rec.excludedDates());
         materializerJob.materializeRule(rule);
+    }
+
+    /** Unticked calendar days become cancelled occurrences, which the materialiser skips. */
+    private void saveExclusions(Event event, List<LocalDate> excludedDates) {
+        if (excludedDates == null) return;
+        for (LocalDate date : excludedDates) {
+            overrideRepository.save(OccurrenceOverride.builder()
+                    .event(event)
+                    .originalDate(date)
+                    .status(OverrideStatus.CANCELLED)
+                    .reason("Avmarkerad i kalendern")
+                    .build());
+        }
+    }
+
+    /** Turn hand-picked days into concrete occurrences. No rule, so the job never touches them. */
+    private void createPickedOccurrences(Event event, PickedDates picked) {
+        ZoneId zone = ZoneId.of(picked.timezone() == null || picked.timezone().isBlank()
+                ? "Europe/Stockholm" : picked.timezone());
+        picked.dates().stream().distinct().sorted().forEach(date -> {
+            OffsetDateTime startsAt = ZonedDateTime.of(date, picked.startTime(), zone).toOffsetDateTime();
+            occurrenceRepository.save(EventOccurrence.builder()
+                    .event(event)
+                    .startsAt(startsAt)
+                    .endsAt(picked.durationMinutes() != null
+                            ? startsAt.plusMinutes(picked.durationMinutes()) : null)
+                    .build());
+        });
+    }
+
+    /** Dates a rule would produce, for the authoring calendar. */
+    @Transactional(readOnly = true)
+    public List<LocalDate> previewRecurrence(RecurrencePreviewRequest request) {
+        LocalDate from = request.from() != null ? request.from()
+                : (request.startsOn() != null ? request.startsOn() : LocalDate.now());
+        LocalDate to = request.to() != null ? request.to() : from.plusMonths(6);
+        if (to.isAfter(from.plusYears(2))) to = from.plusYears(2); // keep the window sane
+        return expander.expand(request.rrule(), from, to, request.startsOn());
     }
 
     private void validateRecurrence(String rrule, java.time.LocalTime startTime, String timezone) {
@@ -261,10 +316,15 @@ public class EventService {
                     .event(event).rrule(rec.rrule()).startTime(rec.startTime())
                     .durationMinutes(rec.durationMinutes()).timezone(rec.timezone())
                     .startsOn(rec.startsOn()).build());
+            // Record exclusions before materialising, so the skipped days are never created.
+            saveExclusions(event, rec.excludedDates());
             materializerJob.materializeRule(rule);
+        } else if (request.pickedDates() != null) {
+            createPickedOccurrences(event, request.pickedDates());
         } else {
             if (request.startsAt() == null) {
-                throw new IllegalArgumentException("startsAt krävs för ett engångsevent (eller ange recurrence)");
+                throw new IllegalArgumentException(
+                        "startsAt krävs för ett engångsevent (eller ange recurrence/pickedDates)");
             }
             occurrenceRepository.save(EventOccurrence.builder()
                     .event(event).startsAt(request.startsAt()).endsAt(request.endsAt()).build());

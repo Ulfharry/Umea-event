@@ -94,6 +94,15 @@ public class EventController {
         return eventService.createRecurring(request, user.getUsername());
     }
 
+    @PostMapping("/recurrence/preview")
+    @PreAuthorize("hasAnyRole('RESTAURANT', 'ADMIN')")
+    @Operation(summary = "Vilka datum en regel skulle ge — underlag för kalendern",
+            security = @SecurityRequirement(name = "bearerAuth"))
+    public java.util.List<java.time.LocalDate> previewRecurrence(
+            @Valid @RequestBody com.umeaevents.event.dto.RecurrencePreviewRequest request) {
+        return eventService.previewRecurrence(request);
+    }
+
     @PostMapping("/{id}/submit")
     @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Skicka in event för granskning (DRAFT → PENDING_REVIEW)",

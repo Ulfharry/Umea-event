@@ -26,13 +26,19 @@ public record UpdateEventRequest(
         @NotNull UUID categoryId,
         OffsetDateTime startsAt,
         OffsetDateTime endsAt,
-        Recurrence recurrence
+        Recurrence recurrence,
+        PickedDates pickedDates
 ) {
+    /**
+     * @param excludedDates the unticked days from the preview calendar. The submitted list is
+     *                      authoritative: cancelled occurrences are replaced with exactly these.
+     */
     public record Recurrence(
             String rrule,
             LocalTime startTime,
             Integer durationMinutes,
             String timezone,
-            java.time.LocalDate startsOn
+            java.time.LocalDate startsOn,
+            java.util.List<java.time.LocalDate> excludedDates
     ) {}
 }

@@ -49,7 +49,7 @@ class EventCreatePublishedIntegrationTest {
     void createPublished_single_isPublishedWithOccurrence() {
         var resp = eventService.createPublished(new CreatePublishedEventRequest(
                 "Direkt-event", "d", null, venue.getId(), category.getId(),
-                OffsetDateTime.parse("2026-09-01T20:00:00Z"), null, null), adminEmail);
+                OffsetDateTime.parse("2026-09-01T20:00:00Z"), null, null, null), adminEmail);
 
         assertThat(resp.status()).isEqualTo(EventStatus.PUBLISHED);
         var event = eventRepository.findById(resp.id()).orElseThrow();
@@ -62,7 +62,8 @@ class EventCreatePublishedIntegrationTest {
         var resp = eventService.createPublished(new CreatePublishedEventRequest(
                 "Direkt-serie", null, null, venue.getId(), category.getId(), null, null,
                 new CreatePublishedEventRequest.Recurrence(
-                        "FREQ=WEEKLY;BYDAY=WE", LocalTime.of(20, 0), 120, "Europe/Stockholm", null)), adminEmail);
+                        "FREQ=WEEKLY;BYDAY=WE", LocalTime.of(20, 0), 120, "Europe/Stockholm", null, null),
+                null), adminEmail);
 
         assertThat(resp.status()).isEqualTo(EventStatus.PUBLISHED);
         var event = eventRepository.findById(resp.id()).orElseThrow();
