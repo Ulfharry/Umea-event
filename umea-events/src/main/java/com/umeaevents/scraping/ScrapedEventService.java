@@ -209,6 +209,7 @@ public class ScrapedEventService {
                 .startTime(rec.startTime())
                 .durationMinutes(rec.durationMinutes())
                 .timezone(rec.timezone())
+                .startsOn(rec.startsOn())
                 .build());
         // Materialise immediately so the event shows up right away; the weekly job tops it up.
         materializerJob.materializeRule(rule);

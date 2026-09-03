@@ -56,7 +56,7 @@ class PromoteRecurringIntegrationTest {
         var request = new PromoteScrapedEventRequest(
                 venue.getId(), category.getId(), null, null, null, null, "promoterad",
                 new PromoteScrapedEventRequest.RecurrenceInput(
-                        "FREQ=WEEKLY;BYDAY=WE", LocalTime.of(20, 0), 120, "Europe/Stockholm"));
+                        "FREQ=WEEKLY;BYDAY=WE", LocalTime.of(20, 0), 120, "Europe/Stockholm", null));
 
         var resp = scrapedEventService.promote(raw.getId(), request, adminEmail);
 

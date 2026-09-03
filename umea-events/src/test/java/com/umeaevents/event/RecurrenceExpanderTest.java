@@ -30,6 +30,93 @@ class RecurrenceExpanderTest {
         dates.forEach(d -> assertThat(d.getDayOfWeek()).isEqualTo(DayOfWeek.THURSDAY));
     }
 
+    // --- INTERVAL (every other week) ---
+
+    @Test
+    void biweekly_from_anchor_returns_every_other_week() {
+        // 2026-06-04 is a Thursday; the anchor's own week is an "on" week.
+        List<LocalDate> dates = expander.expand(
+                "FREQ=WEEKLY;BYDAY=TH;INTERVAL=2",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 7, 31),
+                LocalDate.of(2026, 6, 4));
+
+        assertThat(dates).containsExactly(
+                LocalDate.of(2026, 6, 4),
+                LocalDate.of(2026, 6, 18),
+                LocalDate.of(2026, 7, 2),
+                LocalDate.of(2026, 7, 16),
+                LocalDate.of(2026, 7, 30));
+    }
+
+    @Test
+    void biweekly_parity_survives_a_sliding_expansion_window() {
+        // The materialiser expands in chunks: [anchor, +30d], then [+31d, +60d]. Parity must come
+        // from the anchor, not from where each window happens to open — otherwise the second
+        // chunk restarts the rhythm and the series drifts onto the wrong weeks.
+        String rrule = "FREQ=WEEKLY;BYDAY=TH;INTERVAL=2";
+        LocalDate anchor = LocalDate.of(2026, 6, 4);
+
+        List<LocalDate> firstWindow = expander.expand(
+                rrule, anchor, anchor.plusDays(30), anchor);
+        List<LocalDate> secondWindow = expander.expand(
+                rrule, anchor.plusDays(31), anchor.plusDays(60), anchor);
+
+        List<LocalDate> combined = new java.util.ArrayList<>(firstWindow);
+        combined.addAll(secondWindow);
+
+        // Every date sits an exact multiple of 14 days from the anchor.
+        combined.forEach(d ->
+                assertThat(java.time.temporal.ChronoUnit.DAYS.between(anchor, d) % 14)
+                        .as("date %s must stay on the fortnightly beat", d)
+                        .isZero());
+        assertThat(combined).isEqualTo(expander.expand(rrule, anchor, anchor.plusDays(60), anchor));
+    }
+
+    @Test
+    void biweekly_with_two_weekdays_alternates_weeks_not_days() {
+        // INTERVAL applies to whole weeks: an "on" week yields both Monday and Wednesday.
+        List<LocalDate> dates = expander.expand(
+                "FREQ=WEEKLY;BYDAY=MO,WE;INTERVAL=2",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30),
+                LocalDate.of(2026, 6, 1));
+
+        assertThat(dates).containsExactly(
+                LocalDate.of(2026, 6, 1),   // Mon, week 1
+                LocalDate.of(2026, 6, 3),   // Wed, week 1
+                LocalDate.of(2026, 6, 15),  // Mon, week 3
+                LocalDate.of(2026, 6, 17),  // Wed, week 3
+                LocalDate.of(2026, 6, 29));
+    }
+
+    // --- startsOn ---
+
+    @Test
+    void startsOn_suppresses_dates_before_the_series_begins() {
+        List<LocalDate> dates = expander.expand(
+                "FREQ=WEEKLY;BYDAY=TH",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30),
+                LocalDate.of(2026, 6, 15));
+
+        // First Thursday on or after the 15th, nothing earlier.
+        assertThat(dates).containsExactly(
+                LocalDate.of(2026, 6, 18),
+                LocalDate.of(2026, 6, 25));
+    }
+
+    @Test
+    void startsOn_includes_the_start_day_when_the_weekday_matches() {
+        List<LocalDate> dates = expander.expand(
+                "FREQ=WEEKLY;BYDAY=TH",
+                LocalDate.of(2026, 6, 1),
+                LocalDate.of(2026, 6, 30),
+                LocalDate.of(2026, 6, 11));
+
+        assertThat(dates).first().isEqualTo(LocalDate.of(2026, 6, 11));
+    }
+
     @Test
     void weekly_count_limits_results() {
         List<LocalDate> dates = expander.expand(

@@ -88,7 +88,7 @@ class EventUpdateDeleteIntegrationTest {
         long occBefore = occurrenceRepository.count();
         eventService.update(event.getId(), new UpdateEventRequest(
                 "Uppdaterad serie", null, null, venue.getId(), category.getId(), null, null,
-                new UpdateEventRequest.Recurrence("FREQ=WEEKLY;BYDAY=MO", LocalTime.of(19, 0), 90, "Europe/Stockholm")),
+                new UpdateEventRequest.Recurrence("FREQ=WEEKLY;BYDAY=MO", LocalTime.of(19, 0), 90, "Europe/Stockholm", null)),
                 admin.getEmail());
 
         var rule = recurrenceRuleRepository.findByEvent(event).orElseThrow();

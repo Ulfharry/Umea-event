@@ -3,6 +3,7 @@ package com.umeaevents.event;
 import jakarta.persistence.*;
 import lombok.*;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.time.OffsetDateTime;
 import java.util.UUID;
@@ -29,6 +30,14 @@ public class RecurrenceRule {
 
     @Column(nullable = false)
     private LocalTime startTime;
+
+    /**
+     * First day of the series. Nothing is generated before it, and it anchors INTERVAL parity
+     * (every other week) so the rhythm survives the materialiser's sliding expansion window.
+     * Null = start from whenever expansion happens to begin, as before.
+     */
+    @Column(name = "starts_on")
+    private LocalDate startsOn;
 
     private Integer durationMinutes;
 

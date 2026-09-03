@@ -26,6 +26,7 @@ public record CreatePublishedEventRequest(
             String rrule,
             LocalTime startTime,
             Integer durationMinutes,
-            String timezone
+            String timezone,
+            java.time.LocalDate startsOn
     ) {}
 }

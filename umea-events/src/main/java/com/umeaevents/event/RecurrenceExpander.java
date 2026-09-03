@@ -3,6 +3,7 @@ package com.umeaevents.event;
 import org.springframework.stereotype.Component;
 
 import java.time.*;
+import java.time.temporal.ChronoUnit;
 import java.time.temporal.TemporalAdjusters;
 import java.util.*;
 import java.util.regex.Matcher;
@@ -33,10 +34,21 @@ public class RecurrenceExpander {
 
     private static final Pattern ORDINAL_BYDAY = Pattern.compile("^(-?\\d+)([A-Z]{2})$");
 
+    /** Returns all dates in [from, to] (inclusive) that match the RRULE. */
+    public List<LocalDate> expand(String rruleString, LocalDate from, LocalDate to) {
+        return expand(rruleString, from, to, null);
+    }
+
     /**
      * Returns all dates in [from, to] (inclusive) that match the RRULE.
+     *
+     * <p>{@code startsOn} is the day the series begins. Nothing before it is generated, and it
+     * anchors {@code INTERVAL} parity. The anchor matters because the materialiser expands
+     * through a <em>sliding</em> window (the day after the last horizon, 60 days on): measuring
+     * "every other week" from the window would restart the rhythm on every run. Null anchors on
+     * the window, which is the old behaviour and fine for INTERVAL=1.
      */
-    public List<LocalDate> expand(String rruleString, LocalDate from, LocalDate to) {
+    public List<LocalDate> expand(String rruleString, LocalDate from, LocalDate to, LocalDate startsOn) {
         Map<String, String> parts = parse(rruleString);
         String freq = parts.getOrDefault("FREQ", "");
 
@@ -44,16 +56,22 @@ public class RecurrenceExpander {
                 ? Integer.parseInt(parts.get("COUNT"))
                 : Integer.MAX_VALUE;
 
+        int interval = parts.containsKey("INTERVAL")
+                ? Math.max(1, Integer.parseInt(parts.get("INTERVAL")))
+                : 1;
+
         LocalDate until = parts.containsKey("UNTIL")
                 ? parseUntil(parts.get("UNTIL"))
                 : LocalDate.MAX;
 
         LocalDate effectiveTo = until.isBefore(to) ? until : to;
+        LocalDate effectiveFrom = (startsOn != null && startsOn.isAfter(from)) ? startsOn : from;
+        LocalDate anchor = startsOn != null ? startsOn : effectiveFrom;
 
         return switch (freq) {
-            case "DAILY"   -> daily(from, effectiveTo, count);
-            case "WEEKLY"  -> weekly(parts.get("BYDAY"), from, effectiveTo, count);
-            case "MONTHLY" -> monthly(parts.get("BYDAY"), from, effectiveTo, count);
+            case "DAILY"   -> daily(effectiveFrom, effectiveTo, count, interval, anchor);
+            case "WEEKLY"  -> weekly(parts.get("BYDAY"), effectiveFrom, effectiveTo, count, interval, anchor);
+            case "MONTHLY" -> monthly(parts.get("BYDAY"), effectiveFrom, effectiveTo, count, interval, anchor);
             default -> throw new IllegalArgumentException("Unsupported RRULE FREQ: " + freq);
         };
     }
@@ -87,35 +105,61 @@ public class RecurrenceExpander {
                 Integer.parseInt(d.substring(6, 8)));
     }
 
-    private List<LocalDate> daily(LocalDate from, LocalDate to, int count) {
+    private List<LocalDate> daily(LocalDate from, LocalDate to, int count, int interval, LocalDate anchor) {
         List<LocalDate> result = new ArrayList<>();
         LocalDate cur = from;
         while (!cur.isAfter(to) && result.size() < count) {
-            result.add(cur);
+            if (onBeat(ChronoUnit.DAYS.between(anchor, cur), interval)) result.add(cur);
             cur = cur.plusDays(1);
         }
         return result;
     }
 
-    private List<LocalDate> weekly(String byday, LocalDate from, LocalDate to, int count) {
+    /**
+     * INTERVAL alternates whole weeks, not individual days: with BYDAY=MO,WE and INTERVAL=2 an
+     * "on" week yields both Monday and Wednesday. Parity is measured between week starts so a
+     * window opening mid-week can't shift it.
+     */
+    private List<LocalDate> weekly(String byday, LocalDate from, LocalDate to, int count,
+                                   int interval, LocalDate anchor) {
         Set<DayOfWeek> days = parseWeeklyByday(byday);
+        LocalDate anchorWeek = weekStart(anchor);
         List<LocalDate> result = new ArrayList<>();
         LocalDate cur = from;
         while (!cur.isAfter(to) && result.size() < count) {
-            if (days.contains(cur.getDayOfWeek())) result.add(cur);
+            if (days.contains(cur.getDayOfWeek())
+                    && onBeat(ChronoUnit.WEEKS.between(anchorWeek, weekStart(cur)), interval)) {
+                result.add(cur);
+            }
             cur = cur.plusDays(1);
         }
         return result;
     }
 
-    private List<LocalDate> monthly(String byday, LocalDate from, LocalDate to, int count) {
+    private static LocalDate weekStart(LocalDate date) {
+        return date.with(TemporalAdjusters.previousOrSame(DayOfWeek.MONDAY));
+    }
+
+    /** floorMod so a date before the anchor can't produce a negative remainder. */
+    private static boolean onBeat(long unitsFromAnchor, int interval) {
+        return interval == 1 || Math.floorMod(unitsFromAnchor, interval) == 0;
+    }
+
+    private List<LocalDate> monthly(String byday, LocalDate from, LocalDate to, int count,
+                                    int interval, LocalDate anchor) {
+        YearMonth anchorMonth = YearMonth.from(anchor);
+
         if (byday == null) {
-            // Same day-of-month each month — start from `from`
+            // Same day-of-month each month, taken from the anchor (clamped in short months).
             List<LocalDate> result = new ArrayList<>();
-            LocalDate cur = from;
-            while (!cur.isAfter(to) && result.size() < count) {
-                result.add(cur);
-                cur = cur.plusMonths(1);
+            YearMonth ym = YearMonth.from(from);
+            YearMonth toYm = YearMonth.from(to);
+            while (!ym.isAfter(toYm) && result.size() < count) {
+                if (onBeat(ChronoUnit.MONTHS.between(anchorMonth, ym), interval)) {
+                    LocalDate candidate = ym.atDay(Math.min(anchor.getDayOfMonth(), ym.lengthOfMonth()));
+                    if (!candidate.isBefore(from) && !candidate.isAfter(to)) result.add(candidate);
+                }
+                ym = ym.plusMonths(1);
             }
             return result;
         }
@@ -134,9 +178,11 @@ public class RecurrenceExpander {
         YearMonth toYm = YearMonth.from(to);
 
         while (!ym.isAfter(toYm) && result.size() < count) {
-            LocalDate candidate = nthWeekdayOfMonth(ym, n, dow);
-            if (candidate != null && !candidate.isBefore(from) && !candidate.isAfter(to)) {
-                result.add(candidate);
+            if (onBeat(ChronoUnit.MONTHS.between(anchorMonth, ym), interval)) {
+                LocalDate candidate = nthWeekdayOfMonth(ym, n, dow);
+                if (candidate != null && !candidate.isBefore(from) && !candidate.isAfter(to)) {
+                    result.add(candidate);
+                }
             }
             ym = ym.plusMonths(1);
         }

@@ -36,6 +36,7 @@ public record PromoteScrapedEventRequest(
             String rrule,
             LocalTime startTime,
             Integer durationMinutes,
-            String timezone
+            String timezone,
+            java.time.LocalDate startsOn
     ) {}
 }

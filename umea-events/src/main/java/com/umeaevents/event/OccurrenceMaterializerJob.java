@@ -43,7 +43,9 @@ public class OccurrenceMaterializerJob {
 
         if (!from.isBefore(horizonDate)) return; // already up to date
 
-        List<LocalDate> dates = expander.expand(rule.getRrule(), from, horizonDate);
+        // startsOn anchors INTERVAL parity — without it this sliding window would restart the
+        // rhythm of an every-other-week series on every run.
+        List<LocalDate> dates = expander.expand(rule.getRrule(), from, horizonDate, rule.getStartsOn());
         int created = 0;
 
         for (LocalDate date : dates) {

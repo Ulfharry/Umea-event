@@ -129,6 +129,7 @@ public class EventService {
                         .startTime(request.startTime())
                         .durationMinutes(request.durationMinutes())
                         .timezone(request.timezone())
+                        .startsOn(request.startsOn())
                         .build()
         );
 
@@ -215,6 +216,7 @@ public class EventService {
         rule.setStartTime(rec.startTime());
         rule.setDurationMinutes(rec.durationMinutes());
         rule.setTimezone(rec.timezone());
+        rule.setStartsOn(rec.startsOn());
         rule.setHorizon(null); // regenerate from today
         recurrenceRuleRepository.save(rule);
         occurrenceRepository.deleteByEvent(event); // clear occurrences generated with the old schedule
@@ -257,7 +259,8 @@ public class EventService {
             validateRecurrence(rec.rrule(), rec.startTime(), rec.timezone());
             RecurrenceRule rule = recurrenceRuleRepository.save(RecurrenceRule.builder()
                     .event(event).rrule(rec.rrule()).startTime(rec.startTime())
-                    .durationMinutes(rec.durationMinutes()).timezone(rec.timezone()).build());
+                    .durationMinutes(rec.durationMinutes()).timezone(rec.timezone())
+                    .startsOn(rec.startsOn()).build());
             materializerJob.materializeRule(rule);
         } else {
             if (request.startsAt() == null) {

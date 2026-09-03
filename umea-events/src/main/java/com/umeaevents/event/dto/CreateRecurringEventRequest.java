@@ -3,6 +3,7 @@ package com.umeaevents.event.dto;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 
+import java.time.LocalDate;
 import java.time.LocalTime;
 import java.util.UUID;
 
@@ -15,5 +16,6 @@ public record CreateRecurringEventRequest(
         @NotBlank String rrule,
         @NotNull LocalTime startTime,
         Integer durationMinutes,
-        @NotBlank String timezone
+        @NotBlank String timezone,
+        LocalDate startsOn
 ) {}

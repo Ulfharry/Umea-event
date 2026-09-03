@@ -62,7 +62,7 @@ class EventCreatePublishedIntegrationTest {
         var resp = eventService.createPublished(new CreatePublishedEventRequest(
                 "Direkt-serie", null, null, venue.getId(), category.getId(), null, null,
                 new CreatePublishedEventRequest.Recurrence(
-                        "FREQ=WEEKLY;BYDAY=WE", LocalTime.of(20, 0), 120, "Europe/Stockholm")), adminEmail);
+                        "FREQ=WEEKLY;BYDAY=WE", LocalTime.of(20, 0), 120, "Europe/Stockholm", null)), adminEmail);
 
         assertThat(resp.status()).isEqualTo(EventStatus.PUBLISHED);
         var event = eventRepository.findById(resp.id()).orElseThrow();
