@@ -68,7 +68,7 @@ class EventUpdateDeleteIntegrationTest {
         var newStart = OffsetDateTime.parse("2026-09-02T21:00:00Z");
         eventService.update(event.getId(), new UpdateEventRequest(
                 "Nytt namn", "beskr", "https://img/x.jpg", venue.getId(), category.getId(),
-                newStart, null, null), admin.getEmail());
+                newStart, null, null, null), admin.getEmail());
 
         var reloaded = eventRepository.findById(event.getId()).orElseThrow();
         assertThat(reloaded.getTitle()).isEqualTo("Nytt namn");
@@ -88,7 +88,8 @@ class EventUpdateDeleteIntegrationTest {
         long occBefore = occurrenceRepository.count();
         eventService.update(event.getId(), new UpdateEventRequest(
                 "Uppdaterad serie", null, null, venue.getId(), category.getId(), null, null,
-                new UpdateEventRequest.Recurrence("FREQ=WEEKLY;BYDAY=MO", LocalTime.of(19, 0), 90, "Europe/Stockholm", null)),
+                new UpdateEventRequest.Recurrence("FREQ=WEEKLY;BYDAY=MO", LocalTime.of(19, 0), 90, "Europe/Stockholm", null, null),
+                null),
                 admin.getEmail());
 
         var rule = recurrenceRuleRepository.findByEvent(event).orElseThrow();
