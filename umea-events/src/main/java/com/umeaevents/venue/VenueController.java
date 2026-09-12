@@ -46,10 +46,15 @@ public class VenueController {
         return venueService.getById(id);
     }
 
+    /**
+     * Venues are created by admins and assigned to their owner ({@code PATCH /admin/venues/{id}/owner}).
+     * A venue user must not be able to conjure up venues — the public listing would otherwise be
+     * open to anyone with a login (e.g. the demo account).
+     */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
-    @PreAuthorize("hasAnyRole('RESTAURANT', 'ADMIN')")
-    @Operation(summary = "Skapa ny venue", security = @SecurityRequirement(name = "bearerAuth"))
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Skapa ny venue (endast admin)", security = @SecurityRequirement(name = "bearerAuth"))
     public VenueResponse create(
             @Valid @RequestBody CreateVenueRequest request,
             @AuthenticationPrincipal UserDetails user) {
