@@ -86,8 +86,8 @@ class VenueControllerTest {
     }
 
     @Test
-    @WithMockUser(roles = "RESTAURANT")
-    void create_withRestaurantRole_returns201() throws Exception {
+    @WithMockUser(roles = "ADMIN")
+    void create_withAdminRole_returns201() throws Exception {
         var request = new CreateVenueRequest("Bishops Arms", "Engelsk pub", VenueType.PUB, "Rådhusesplanaden 17", null);
         when(venueService.create(any(), any())).thenReturn(sampleVenue());
 
@@ -96,6 +96,18 @@ class VenueControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("Bishops Arms"));
+    }
+
+    @Test
+    @WithMockUser(roles = "RESTAURANT")
+    void create_withRestaurantRole_returns403() throws Exception {
+        // Venue users get venues assigned by an admin; they never create their own.
+        var request = new CreateVenueRequest("Min egen pub", null, VenueType.PUB, null, null);
+
+        mockMvc.perform(post("/api/v1/venues")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isForbidden());
     }
 
     @Test
