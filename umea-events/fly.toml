@@ -23,4 +23,8 @@ primary_region = "arn"
 
 [[vm]]
   size = "shared-cpu-1x"
-  memory = "512mb"
+  # 1GB, not 512MB: the JVM was OOM-killed twice on 512 and then spent 20+ minutes in a GC
+  # spiral serving nothing. The heap takes half the machine, and thread stacks, metaspace and
+  # Jsoup buffers have to fit in the other half. Keep this here rather than using
+  # `fly scale memory` — a deploy reads this file and would silently scale it back down.
+  memory = "1024mb"
