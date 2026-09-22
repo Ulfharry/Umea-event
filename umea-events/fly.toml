@@ -17,7 +17,11 @@ primary_region = "arn"
 [[http_service.checks]]
   interval = "15s"
   timeout = "3s"
-  grace_period = "30s"
+  # The app takes ~31s to start, so 30s here was a hair short of the truth: the check could
+  # start failing a moment before the app was ever ready, and a slightly slower boot would make
+  # a deploy roll itself back with nothing actually wrong. 60s leaves real headroom without
+  # delaying detection — once running, a failure is still caught within 15s.
+  grace_period = "60s"
   method = "GET"
   path = "/actuator/health"
 
