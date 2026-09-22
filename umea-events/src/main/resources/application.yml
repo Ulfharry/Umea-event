@@ -7,6 +7,22 @@ spring:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/umea_events}
     username: ${DB_USER:umea}
     password: ${DB_PASSWORD:umea}
+    hikari:
+      # Utan detta gäller Hikaris defaults, och då blir varje strul en 30-sekunders tystnad
+      # mot klienten. Hellre snabbt fel: 5 s att vänta på en anslutning räcker gott här.
+      connection-timeout: 5000
+      # Tak på 10 anslutningar; en delad vCPU blir inte snabbare av fler.
+      maximum-pool-size: 10
+      minimum-idle: 2
+      # Pinga vilande anslutningar, så döda sådana upptäcks av poolen och inte av en användare.
+      keepalive-time: 120000
+      max-lifetime: 900000
+      # Logga anslutningar som hålls längre än så — avslöjar läckor innan de tömmer poolen.
+      leak-detection-threshold: 30000
+      data-source-properties:
+        # Utan socketTimeout blockerar JDBC-drivrutinen för evigt om motparten tystnar.
+        socketTimeout: 30
+        connectTimeout: 10
 
   jpa:
     hibernate:
@@ -44,6 +60,12 @@ springdoc:
 
 server:
   port: 8080
+  tomcat:
+    threads:
+      # Default är 200 trådar. Varje tråd reserverar ~1 MB stack, allt utanför heapen, på en
+      # maskin där heapen redan tar halva minnet. Vår trafik når ingenstans nära 50 samtidiga.
+      max: 50
+      min-spare: 5
 
 logging:
   level:
