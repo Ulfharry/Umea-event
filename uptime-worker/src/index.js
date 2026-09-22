@@ -16,6 +16,7 @@ const PROBE_TIMEOUT_MS = 10_000;
 const RETRY_DELAY_MS = 5_000;
 const REMINDER_INTERVAL_MS = 60 * 60 * 1000;
 const STATE_KEY = 'status';
+const HEARTBEAT_KEY = 'heartbeat';
 
 /**
  * Health alone is not enough: on some failure modes a JVM answers /actuator/health while the
@@ -119,6 +120,14 @@ const minutesSince = (ms) => Math.round((Date.now() - ms) / 60000);
 
 /** Returns a short line describing what it did, for logs and the manual-trigger response. */
 async function check(env) {
+  const result = await decide(env);
+  // Heartbeat last, and only on a real run. This is what proves the monitor itself is alive;
+  // see the /heartbeat route for who reads it.
+  await env.STATE.put(HEARTBEAT_KEY, JSON.stringify({ at: new Date().toISOString(), result }));
+  return result;
+}
+
+async function decide(env) {
   const failures = await runChecks();
   const prev = await readState(env);
   const now = Date.now();
@@ -159,28 +168,43 @@ export default {
     ctx.waitUntil(check(env).then((r) => console.log(`uptime: ${r}`)));
   },
 
-  /**
-   * Manual trigger, for proving the thing works without waiting for an outage. Probing is open
-   * (it only reads public URLs and sends nothing); anything that sends mail or writes state
-   * needs the secret, so the deployed Worker can't be used to mail-bomb anyone.
-   */
   async fetch(request, env) {
     const url = new URL(request.url);
     const authorised = env.TEST_SECRET && url.searchParams.get('secret') === env.TEST_SECRET;
 
+    // Open on purpose, and deliberately cheap: one KV read, no probing, nothing worth abusing.
+    // This is the dead man's switch. If this Worker stops running it cannot report that itself,
+    // so something outside has to notice the silence — the GitHub backstop reads this and fails
+    // when the timestamp goes stale.
+    if (url.pathname === '/heartbeat') {
+      const raw = await env.STATE.get(HEARTBEAT_KEY);
+      const beat = raw ? JSON.parse(raw) : null;
+      return Response.json({
+        lastRunAt: beat?.at ?? null,
+        ageSeconds: beat ? Math.round((Date.now() - Date.parse(beat.at)) / 1000) : null,
+        lastResult: beat?.result ?? null,
+      });
+    }
+
+    // Everything past here probes three sites or sends mail, so it needs the secret. Left open,
+    // it would be a free way for anyone to burn the account's daily request budget — which would
+    // stop the cron and take out the monitor itself.
+    if (!authorised) return new Response('Not found\n', { status: 404 });
+
     if (url.searchParams.get('send') === 'test') {
-      if (!authorised) return new Response('Not found\n', { status: 404 });
       await sendAlert(env, 'UVEN: testlarm',
         'Det här är ett testlarm från uptime-workern. Kommer det fram fungerar larmvägen.');
       return new Response('Testlarm skickat\n');
     }
 
-    if (authorised) return new Response(`${await check(env)}\n`);
+    if (url.searchParams.get('probe') === 'only') {
+      const failures = await runChecks();
+      return Response.json(
+        { status: failures.length ? 'down' : 'up', failures },
+        { status: failures.length ? 503 : 200 },
+      );
+    }
 
-    const failures = await runChecks();
-    return Response.json(
-      { status: failures.length ? 'down' : 'up', failures },
-      { status: failures.length ? 503 : 200 },
-    );
+    return new Response(`${await check(env)}\n`);
   },
 };

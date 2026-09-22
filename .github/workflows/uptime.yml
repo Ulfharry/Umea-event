@@ -52,3 +52,34 @@ jobs:
             exit 1
           fi
           echo "events endpoint OK (HTTP $code)"
+
+      - name: Uptime-workern lever (dead man's switch)
+        # The Worker watches UVEN; nothing watches the Worker. If it is undeployed, erroring on
+        # every run, or its KV binding is gone, it goes quiet — and silence from a monitor looks
+        # exactly like everything being fine. So we read the heartbeat it writes on each run and
+        # fail when it goes stale. This job's own cadence is unreliable, which is acceptable
+        # here: a broken monitor is far rarer than an outage, and "noticed within a few hours"
+        # beats "never".
+        env:
+          WORKER_URL: ${{ vars.UPTIME_WORKER_URL }}
+        run: |
+          if [ -z "$WORKER_URL" ]; then
+            echo "::warning::UPTIME_WORKER_URL är inte satt — hoppar över. Se uptime-worker/README.md"
+            exit 0
+          fi
+          code=$(curl -sS -o /tmp/hb -w '%{http_code}' --max-time 20 "${WORKER_URL%/}/heartbeat" || echo 000)
+          if [ "$code" != "200" ]; then
+            echo "::error::Uptime-workern svarar inte på /heartbeat (HTTP $code) — övervakningen är nere"
+            exit 1
+          fi
+          age=$(jq -r '.ageSeconds // "null"' /tmp/hb)
+          if [ "$age" = "null" ]; then
+            echo "::error::Uptime-workern har aldrig kört — den övervakar ingenting"
+            exit 1
+          fi
+          # Cron is every 5 minutes; 20 allows four missed runs before we call it dead.
+          if [ "$age" -gt 1200 ]; then
+            echo "::error::Uptime-workern körde senast för $((age / 60)) minuter sedan — den har slutat mäta"
+            exit 1
+          fi
+          echo "uptime-workern lever (senaste körning ${age}s sedan: $(jq -r '.lastResult' /tmp/hb))"
