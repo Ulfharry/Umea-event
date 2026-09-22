@@ -1,0 +1,41 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "uven-uptime",
+  "main": "src/index.js",
+  "compatibility_date": "2026-07-08",
+
+  // Cloudflare's scheduler actually honours this. The GitHub Actions workflow this replaces was
+  // set to */15 and delivered a median of one run every 3.6 hours.
+  "triggers": {
+    "crons": ["*/5 * * * *"]
+  },
+
+  "observability": { "enabled": true },
+
+  "vars": {
+    // Sender must be on a domain with Email Routing enabled. The address need not exist as an
+    // inbox — it only has to be on uven.se.
+    "ALERT_FROM": "uptime@uven.se",
+    // Recipient MUST be a verified destination address in Cloudflare Email Routing, or send()
+    // is rejected. Verify it under Email Routing -> Destination addresses first.
+    "ALERT_TO": "FYLL-I-DIN-ADRESS@example.com"
+  },
+
+  // Lets the Worker send to the verified destination above.
+  "send_email": [
+    {
+      "name": "ALERT_EMAIL",
+      "destination_address": "FYLL-I-DIN-ADRESS@example.com"
+    }
+  ],
+
+  // Remembers whether we are currently up or down, so an outage sends a couple of mails rather
+  // than one every five minutes. Create with:
+  //   npx wrangler kv namespace create STATE
+  "kv_namespaces": [
+    {
+      "binding": "STATE",
+      "id": "FYLL-I-KV-ID"
+    }
+  ]
+}

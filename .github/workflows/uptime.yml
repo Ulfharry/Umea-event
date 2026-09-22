@@ -1,11 +1,16 @@
 name: Uptime
 
-# Polls the live API and public site. A failing run sends GitHub's usual
-# workflow-failure email to the person who created the workflow, so an outage
-# turns up in the inbox instead of being noticed days later by accident.
+# Backstop only. The uven-uptime Cloudflare Worker (see uptime-worker/) is the real
+# monitor; this catches the case where the Worker itself is broken or undeployed.
+#
+# Do not tighten this cron. GitHub's scheduled runs are best-effort and throttled: set to
+# */15, this delivered a median of one run every 3.6 hours, and not one interval under 20
+# minutes across 99 samples. A two-hour outage on 2026-09-22 fell entirely between two
+# checks. Hourly is closer to what actually gets delivered, so the file stops implying a
+# guarantee nobody is keeping.
 on:
   schedule:
-    - cron: '*/15 * * * *'
+    - cron: '17 * * * *'
   workflow_dispatch:
 
 jobs:
