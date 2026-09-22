@@ -163,6 +163,35 @@ async function decide(env) {
   return 'UPPE';
 }
 
+/**
+ * Accepts the secret from an X-Uptime-Secret header or, as a fallback, a ?secret= parameter.
+ * The header is the one to use: a secret in a query string has to survive URL parsing, and a
+ * generated one containing & + # or % silently arrives truncated or altered. Both sides are
+ * trimmed, because a value pasted into a prompt often carries whitespace nobody can see.
+ *
+ * The response is always a flat 404 so a stranger learns nothing, but the reason is logged —
+ * run `npx wrangler tail` to see why your own call was refused.
+ */
+function authorise(request, url, env) {
+  const expected = env.TEST_SECRET?.trim();
+  if (!expected) {
+    console.log('auth: TEST_SECRET is not configured — run `wrangler secret put TEST_SECRET`');
+    return false;
+  }
+  const offered = (request.headers.get('X-Uptime-Secret') ?? url.searchParams.get('secret') ?? '').trim();
+  if (!offered) {
+    console.log('auth: no secret supplied (use the X-Uptime-Secret header or ?secret=)');
+    return false;
+  }
+  if (offered !== expected) {
+    console.log(
+      `auth: secret did not match (got ${offered.length} chars, expected ${expected.length})`,
+    );
+    return false;
+  }
+  return true;
+}
+
 export default {
   async scheduled(_controller, env, ctx) {
     ctx.waitUntil(check(env).then((r) => console.log(`uptime: ${r}`)));
@@ -170,7 +199,7 @@ export default {
 
   async fetch(request, env) {
     const url = new URL(request.url);
-    const authorised = env.TEST_SECRET && url.searchParams.get('secret') === env.TEST_SECRET;
+    const authorised = authorise(request, url, env);
 
     // Open on purpose, and deliberately cheap: one KV read, no probing, nothing worth abusing.
     // This is the dead man's switch. If this Worker stops running it cannot report that itself,

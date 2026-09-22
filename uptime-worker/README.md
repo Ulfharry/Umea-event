@@ -78,16 +78,22 @@ fungerar ändå.
    `wrangler deploy` skriver ut Workerns URL i steg 5. Använd den, och hemligheten du satte
    i steg 4 — platshållarna nedan ska ersättas, vinkelparenteserna ska bort.
 
-   PowerShell (obs: `curl` är ett alias för `Invoke-WebRequest` där, med annan syntax — skriv
-   `curl.exe` för att få riktiga curl):
+   Skicka hemligheten i en header, inte i URL:en — en genererad hemlighet som innehåller
+   `&`, `+`, `#` eller `%` kommer fram stympad som query-parameter.
+
+   PowerShell (obs: `curl` är ett alias för `Invoke-WebRequest` där, med annan syntax):
    ```powershell
-   Invoke-RestMethod "https://uven-uptime.DIN-SUBDOMAN.workers.dev/?send=test&secret=DIN-HEMLIGHET"
+   Invoke-RestMethod "https://uven-uptime.DIN-SUBDOMAN.workers.dev/?send=test" -Headers @{ "X-Uptime-Secret" = "DIN-HEMLIGHET" }
    ```
 
    bash:
    ```bash
-   curl "https://uven-uptime.DIN-SUBDOMAN.workers.dev/?send=test&secret=DIN-HEMLIGHET"
+   curl -H "X-Uptime-Secret: DIN-HEMLIGHET" "https://uven-uptime.DIN-SUBDOMAN.workers.dev/?send=test"
    ```
+
+   Får du `Not found` är det hemligheten som inte matchar. Svaret är avsiktligt intetsägande,
+   men orsaken loggas — kör `npx wrangler tail` i ett annat fönster och gör om anropet, så
+   står det där om hemligheten saknas, är osatt eller har fel längd.
 
    Kommer mailet fram är kedjan hel.
 
