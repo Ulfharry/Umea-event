@@ -73,10 +73,22 @@ fungerar ändå.
    ```
 
 6. **Bevisa att larmet går fram** — det här steget är hela poängen. Den gamla larmvägen hade
-   200 gröna körningar och hade aldrig utlösts en enda gång, så ingen visste om den fungerade:
+   200 gröna körningar och hade aldrig utlösts en enda gång, så ingen visste om den fungerade.
+
+   `wrangler deploy` skriver ut Workerns URL i steg 5. Använd den, och hemligheten du satte
+   i steg 4 — platshållarna nedan ska ersättas, vinkelparenteserna ska bort.
+
+   PowerShell (obs: `curl` är ett alias för `Invoke-WebRequest` där, med annan syntax — skriv
+   `curl.exe` för att få riktiga curl):
+   ```powershell
+   Invoke-RestMethod "https://uven-uptime.DIN-SUBDOMAN.workers.dev/?send=test&secret=DIN-HEMLIGHET"
    ```
-   curl "https://uven-uptime.<din-subdomän>.workers.dev/?send=test&secret=<TEST_SECRET>"
+
+   bash:
+   ```bash
+   curl "https://uven-uptime.DIN-SUBDOMAN.workers.dev/?send=test&secret=DIN-HEMLIGHET"
    ```
+
    Kommer mailet fram är kedjan hel.
 
 ## Användning
