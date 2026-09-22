@@ -18,14 +18,14 @@
     "ALERT_FROM": "uptime@uven.se",
     // Recipient MUST be a verified destination address in Cloudflare Email Routing, or send()
     // is rejected. Verify it under Email Routing -> Destination addresses first.
-    "ALERT_TO": "FYLL-I-DIN-ADRESS@example.com"
+    "ALERT_TO": "ulfharryalexandersson@gmail.com"
   },
 
   // Lets the Worker send to the verified destination above.
   "send_email": [
     {
       "name": "ALERT_EMAIL",
-      "destination_address": "FYLL-I-DIN-ADRESS@example.com"
+      "destination_address": "ulfharryalexandersson@gmail.com"
     }
   ],
 
